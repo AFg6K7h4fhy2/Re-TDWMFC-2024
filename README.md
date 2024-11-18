@@ -2,7 +2,7 @@
 
 __NOTE__: This repository is new and contains NO content!
 
-Citation for original paper referenced:
+Citation for original paper (see [here](https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0298318&type=printable)) referenced:
 
 > Wittmann, Lukas, and Christian Kuehn. "The Demographic-Wealth model for cliodynamics." Plos one 19, no. 4 (2024): e0298318.
 
