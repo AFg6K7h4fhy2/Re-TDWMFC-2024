@@ -1,0 +1,31 @@
+---
+title: Glossary
+date: "2024-11-20"
+bibliography: references.bib
+---
+
+__Cliodynamics__:
+
+__Coexistence Point__:
+
+__Bifurcation Analysis__:
+
+__Demographic-Fiscal Model__:
+
+__Demographic-Wealth Model__:
+
+__Existence Theory__:
+
+__Hopf Bifurcation__:
+
+__Nonlinear Dynamics__:
+
+__Paradox Of Enrichment__:
+
+__Periodic Orbits__:
+
+__Population Dynamics__:
+
+__State Dynamics__:
+
+__Taxation__:
