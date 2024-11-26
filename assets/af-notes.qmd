@@ -8,6 +8,7 @@ Notes:
 
 * Entities with a "*" preceding them are covered in the glossary of this repository.
 * Definitions in this repository's glossary are necessarily supported by the paper's authors.
+* Notes below include quotes, contentions, observations, questions, and comments.
 
 Contributions outlined in Abstract:
 
