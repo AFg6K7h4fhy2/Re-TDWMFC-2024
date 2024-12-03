@@ -27,7 +27,7 @@ init_p = 1  # initial per capita taxation rate
 max_k = 4  # maximum carrying capacity
 c = max_k - init_k  # maximum gain of increasing carrying capacity
 init_s = 10  # initial state resources (grain)
-beta = 0.1  # per capita state expenditure
+beta = 0.4  # per capita state expenditure
 
 # %% STATE CARRYING CAPACITY
 
@@ -53,7 +53,6 @@ def DFM(t, y, args):
 
 # %% GET THE DFM SOLUTION
 
-# def run_DFM()
 
 term = diffrax.ODETerm(DFM)
 solver = diffrax.Tsit5()
@@ -61,19 +60,45 @@ t0 = 0
 t1 = 500
 dt0 = 1
 y0 = jnp.array([init_N, init_S])
-args = jnp.array([r, init_p, beta])
+args_01 = jnp.array([r, init_p, 0.0])
+args_02 = jnp.array([r, init_p, 0.1])
+args_03 = jnp.array([r, init_p, 0.25])
+args_04 = jnp.array([r, init_p, 0.4])
+betas = [0.0, 0.1, 0.25, 0.4]
 saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
-sol = diffrax.diffeqsolve(
-    term, solver, t0, t1, dt0, y0, args=args, saveat=saveat
-)
-N, S = sol.ys.T
+sols = [
+    diffrax.diffeqsolve(
+        term, solver, t0, t1, dt0, y0, args=args_01, saveat=saveat
+    ),
+    diffrax.diffeqsolve(
+        term, solver, t0, t1, dt0, y0, args=args_02, saveat=saveat
+    ),
+    diffrax.diffeqsolve(
+        term, solver, t0, t1, dt0, y0, args=args_03, saveat=saveat
+    ),
+    diffrax.diffeqsolve(
+        term, solver, t0, t1, dt0, y0, args=args_04, saveat=saveat
+    ),
+]
 
 # %% PLOTTING
 
 figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-axes[0].plot(sol.ts, N, label="Population", color="orange")
+for i, sol in enumerate(sols):
+    N, S = sol.ys.T
+    axes[0].plot(sol.ts, N, label=f"Beta: {betas[i]}", linewidth=1.0)
+    axes[1].plot(
+        sol.ts, jnp.maximum(S, 0.0), label=f"Beta: {betas[i]}", linewidth=1.0
+    )
+axes[0].set_xlim(xmin=0)
+axes[0].set_ylim(ymin=0)
+axes[0].set_ylabel("N")
+axes[0].set_xlabel("t")
 axes[0].legend()
-axes[1].plot(sol.ts, S, label="State Resources", color="green")
+axes[1].set_xlim(xmin=0)
+axes[1].set_ylim(ymin=0)
+axes[1].set_ylabel("S")
+axes[1].set_xlabel("t")
 axes[1].legend()
 plt.show()
 
