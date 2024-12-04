@@ -1,0 +1,15 @@
+[model]
+model = "DFM"
+
+[variables]
+init_N = 0.5
+init_S = 0.0
+
+[parameters]
+init_p = 1
+init_s = 10
+init_k = 1
+max_k = 4
+c = 3
+r = 0.02
+beta = 0.4
