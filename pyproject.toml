@@ -20,6 +20,7 @@ diffrax = "^0.6.0"
 jax = "^0.4.35"
 jupyter = "^1.1.1"
 matplotlib = "^3.9.3"
+toml = "^0.10.2"
 
 [build-system]
 requires = ["poetry-core"]
