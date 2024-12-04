@@ -9,7 +9,7 @@ cliodynamics).
 """
 
 # %% IMPORTS
-
+# TODO: use time in this notebook
 import diffrax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt

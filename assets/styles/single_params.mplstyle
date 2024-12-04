@@ -1,0 +1,24 @@
+################################################################################
+# NOTES (2024-12-04)
+################################################################################
+# From https://matplotlib.org/stable/users/explain/customizing.html
+#
+# A style sheets looks the same as a
+# matplotlibrc file, but in a style sheet you
+# can only set rcParams that are related to
+# the actual style of a plot. Other rcParams,
+# like backend, will be ignored. matplotlibrc
+# files support all rcParams. The rationale
+# behind this is to make style sheets portable
+# between different machines without having
+# to worry about dependencies which might or
+# might not be installed on another machine.
+#
+# These will be ignored (see
+# https://matplotlib.org/stable/api/style_api.html#matplotlib.style.use)
+################################################################################
+
+
+
+figure.figsize: 10, 5 # figure size in inches
+figure.dpi: 150 # figure dots per inch

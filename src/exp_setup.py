@@ -5,6 +5,8 @@ Wealth Model (DWM) by reading in variable and
 parameter values from configuration files.
 """
 
+from collections.abc import Sequence
+
 import diffrax
 import jax.numpy as jnp
 
@@ -15,8 +17,12 @@ def read_config():
     pass
 
 
-def ensure_listlike():
-    pass
+def ensure_listlike(x: any):
+    """
+    Idea sourced from the following:
+    https://stackoverflow.com/questions/66485566/
+    """
+    return x if isinstance(x, Sequence) else [x]
 
 
 def plot_figure():
@@ -40,6 +46,17 @@ def run_model():
         term, solver, t0, t1, dt0, y0, args=args_01, saveat=saveat
     )
     print(sol)
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    # parser =
+
+    # pass args to main and run
+    main()
 
 
 # %%
