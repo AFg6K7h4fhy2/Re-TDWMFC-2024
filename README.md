@@ -4,7 +4,10 @@ __NOTE__: This repository is quite new and contains NO content of note!
 
 ## Original Paper
 
-See [here](https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0298318&type=printable) for link to paper and see [here](./assets/2024-TDWMFC-Wittmann.pdf) for a PDF of the paper.
+__Links__
+
+* [The paper online.](https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0298318&type=printable).
+* [A PDF of the paper](./assets/2024-TDWMFC-Wittmann.pdf).
 
 __Citation__:
 
