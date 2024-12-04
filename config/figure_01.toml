@@ -16,3 +16,6 @@ max_k = 4
 c = 3
 r = 0.02
 beta = 0.4
+
+[plotting]
+style = "name style file"
