@@ -1,5 +1,8 @@
 [model]
 model = "DFM"
+t0 = 0
+t1 = 500
+dt0 = 1
 
 [variables]
 init_N = 0.5

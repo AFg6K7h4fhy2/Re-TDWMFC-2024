@@ -5,7 +5,10 @@ Wealth Model (DWM) by reading in variable and
 parameter values from configuration files.
 """
 
-# %%
+import diffrax
+import jax.numpy as jnp
+
+from models import DFM
 
 
 def read_config():
@@ -21,7 +24,22 @@ def plot_figure():
 
 
 def run_model():
-    pass
+    term = diffrax.ODETerm(DFM)
+    solver = diffrax.Tsit5()
+    t0 = 0
+    t1 = 500
+    dt0 = 1
+    init_p = 1
+    r = 0.02
+    init_N = 0.5
+    init_S = 0.0
+    y0 = jnp.array([init_N, init_S])
+    args_01 = jnp.array([r, init_p, 0.0])
+    saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
+    sol = diffrax.diffeqsolve(
+        term, solver, t0, t1, dt0, y0, args=args_01, saveat=saveat
+    )
+    print(sol)
 
 
 # %%
