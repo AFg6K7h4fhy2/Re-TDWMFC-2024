@@ -6,7 +6,9 @@ parameter values from configuration files.
 This script must be ran from within the
 folder `src`. To run:
 
-python3 exp_setup.py --DFM --config "fig01.toml"
+python3 exp_setup.py --DFM --config "fig_01.toml"
+
+python3 exp_setup.py --DFM --config "fig_01.toml" --style "multi_param"
 """
 
 import argparse
@@ -24,6 +26,8 @@ import toml
 from jax.typing import ArrayLike
 
 from models import DFM, DWM
+
+plt.rcParams["text.usetex"] = True
 
 CONFIG_ENTRIES = [
     "init_N",
@@ -256,7 +260,7 @@ def plot_and_save_to_pdf(
     # use grayscale for plotting, if
     # no style is provided
     if style != "default":
-        base_style_path = pathlib.Path("../assets/style")
+        base_style_path = pathlib.Path("../assets/styles")
         style_path = base_style_path / (style + ".mplstyle")
         if style_path.exists():
             plt.style.use(str(style_path))
@@ -272,14 +276,14 @@ def plot_and_save_to_pdf(
         axes[0].set_title(f"{model}: Population Change", fontsize=20)
         # axes[0].set_xlim(xmin=0)
         # axes[0].set_ylim(ymin=0)
-        axes[0].set_ylabel(r"$N$", rotation=90, fontsize=20)
+        axes[0].set_ylabel(r"$N$", rotation=90, fontsize=15)
         axes[0].set_xlabel("t", fontsize=20)
         axes[0].plot(sol.ts, N)
         # axes[0].legend()
         # axes[1].set_xlim(xmin=0)
         # axes[1].set_ylim(ymin=0)
         axes[1].set_title(f"{model}: State Resources", fontsize=20)
-        axes[1].set_ylabel(r"$S$", rotation=90, fontsize=20)
+        axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
         axes[1].set_xlabel("t", fontsize=20)
         axes[1].plot(sol.ts, S)
         plt.show()
