@@ -29,9 +29,9 @@ from models import DFM, DWM
 
 plt.rcParams["text.usetex"] = True
 
-CONFIG_ENTRIES = [
-    "init_N",
-    "init_S",
+CONFIG_SPECS = ["t0", "t1", "dt0"]
+CONFIG_VARS = ["init_N", "init_S"]
+CONFIG_PARAMS = [  # both DFM and DWM params
     "init_p",
     "init_s",
     "init_k",
@@ -39,11 +39,20 @@ CONFIG_ENTRIES = [
     "c",
     "r",
     "beta",
-    "t0",
-    "t1",
-    "dt0",
 ]
-NON_LISTLIKE_KEYS = ["t0", "t1", "dt0"]
+CONFIG_ENTRIES = CONFIG_SPECS + CONFIG_VARS + CONFIG_PARAMS
+NON_LISTLIKE_KEYS = CONFIG_SPECS
+LABELS = {  # both DFM and DWM params
+    "init_N": r"$N_0$",
+    "init_S": r"$S_0$",
+    "init_p": r"$\rho_0$",
+    "init_s": r"$s_0$",
+    "init_k": r"$k_0$",
+    "max_k": r"$k_{\text{max}}$",
+    "c": r"$c$",
+    "r": r"$r$",
+    "beta": r"$\beta$",
+}
 
 
 def check_values_interval(
@@ -116,8 +125,7 @@ def load_and_validate_config(
         )
     # if certain entries are missing, fill in
     # with default values
-    # TODO: use default or force use of all
-    # necessary components?
+    # TODO: use default or force use of all necessary components?
     if sorted(loaded_entries) != sorted(CONFIG_ENTRIES):
         default_config_path = pathlib.Path("../config/default.toml")
         if not default_config_path.is_file():
@@ -141,7 +149,6 @@ def load_and_validate_config(
     for k, v in config.items():
         if not isinstance(v, list) and k not in NON_LISTLIKE_KEYS:
             config[k] = ensure_listlike(v)
-
     # TODO: check t0, t1, dt0
     # TODO: check c, max_k, init_k
     # TODO: non-listlike initN and initS?
@@ -166,7 +173,6 @@ def load_and_validate_config(
         raise ValueError(
             f"Maximum carry capacity (got {max_max_k}) must be greater than initial carry capacity (got {max_init_k})."
         )
-    print(config)
     return config
 
 
@@ -205,6 +211,7 @@ def run_model(
     dt0 = config["dt0"]
     saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
     # choose solver
+    # TODO: justify solver choice
     solver = diffrax.Tsit5()
     # get appropriate model and args
     if model == "DFM":
@@ -219,6 +226,12 @@ def run_model(
             k: config[k]
             for k in ["r", "init_p", "beta", "alpha", "d", "g", "c", "init_k"]
         }
+    # get combinations of parameters, group
+    # by each parameter
+    y0s = [
+        jnp.array(pair)
+        for pair in list(it.product(config["init_N"], config["init_S"]))
+    ]
     args = [
         jnp.array(group)
         for group in list(
@@ -227,12 +240,7 @@ def run_model(
             )
         )
     ]
-    # get combinations of parameters, group
-    # by each parameter
-    y0s = [
-        jnp.array(pair)
-        for pair in list(it.product(config["init_N"], config["init_S"]))
-    ]
+    # get model solutions
     sols = [
         diffrax.diffeqsolve(
             term, solver, t0, t1, dt0, y0, args=arg, saveat=saveat
@@ -241,17 +249,18 @@ def run_model(
         for arg in args
     ]
     entries = [
-        (i, j, list(y0), list(arg))
+        list(it.product(y0.tolist(), arg.tolist()))
         for i, y0 in enumerate(y0s)
         for j, arg in enumerate(args)
     ]
-    return (sols, entries)
+    return (sols, entries, input_dict)
 
 
-def plot_and_save_to_pdf(
+def plot_and_save_to_pdf(  #
     model: str,
     sols: list[ArrayLike],
     entries: tuple[int, int, list[int | float], list[int | float]],
+    input_dict,
     config: dict[str, float | int | list[int] | list[float]],
     to_save_as_pdf: bool,
     save_name: str,
@@ -269,6 +278,92 @@ def plot_and_save_to_pdf(
             raise FileNotFoundError(f"Style file {style}.mplstyle not found.")
     else:
         plt.style.use("grayscale")
+    # get number of elts associated with
+    # each value or parameter
+    len_each_key = {
+        k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS
+    }
+    full_var_params = ["init_N", "init_S"] + list(input_dict.keys())
+    # full_var_param_prod = list(
+    #     it.product(["init_N", "init_S"], list(input_dict.keys()))
+    # )
+    full_entry_indexed = {
+        k: i
+        for i, k in zip(
+            list(range(2 + len(list(input_dict.keys())))), full_var_params
+        )
+    }
+    sols_and_entries = list(zip(sols, entries))
+    # group by all indices but that which
+    # you are considering for plotting
+    for k, v in full_entry_indexed.items():
+        if len_each_key[k] > 1:
+            # the groups for a particular
+            # entry (e.g. beta)
+            groups_for_k = [
+                (elt[0], elt[1][full_entry_indexed[k]])
+                for elt in sorted(
+                    sols_and_entries,
+                    key=lambda s_e: tuple(
+                        [
+                            s_e[1][i]
+                            for i in full_entry_indexed.values()
+                            if i != full_entry_indexed[k]
+                        ]
+                    ),
+                )
+            ]
+            print(
+                tuple(
+                    [
+                        s_e[1][i]
+                        for s_e in sols_and_entries
+                        for i in full_entry_indexed.values()
+                        if i != full_entry_indexed[k]
+                    ]
+                )
+            )
+            figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
+            axes[0].set_title(f"{model}: Population Change", fontsize=20)
+            axes[0].set_xlim(xmin=0)
+            axes[0].set_ylim(ymin=0)
+            axes[0].set_ylabel(r"$N$", rotation=90, fontsize=15)
+            axes[0].set_xlabel("t", fontsize=20)
+            axes[0].legend()
+            axes[1].set_xlim(xmin=0)
+            axes[1].set_ylim(ymin=0)
+            axes[1].set_title(f"{model}: State Resources", fontsize=20)
+            axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
+            axes[1].set_xlabel("t", fontsize=20)
+            for elt in groups_for_k:
+                param_val = elt[1]
+                print(LABELS[k])
+                print(param_val)
+                sol = elt[0]
+                N, S = sol.ys.T
+                S = jnp.maximum(S, 0.0)
+                axes[1].plot(sol.ts, S, label=rf"{LABELS[k]}={param_val}")
+                axes[0].plot(sol.ts, N, label=rf"{LABELS[k]}={param_val}")
+            plt.show()
+
+            # indices_to_sort_by = sol_indices[:i] + sol_indices[i+1:]
+
+    # (i, j, list(it.product(list(y0), list(arg))))
+
+    #     for i, k in enumerate([k1: [1,2], k2: [3,4], k3:[5]])
+    #   if len(k) > 1:
+    #     # group all
+    #     groups = []
+    #     for sol in sols:
+    #         sol_indices = list(range(len(sol)))
+    #         sol_sort_vals = sol_indices[:i] + sol_indices[i+1:]
+
+    #         sorted_sol =
+
+    # [(1, 3, 5), (1, 4, 5), (2, 3, 5), (2, 4, 5)]
+
+    # [1,2] --> (1, 3, 5), (2, 3, 5)
+
     for sol in sols:
         N, S = sol.ys.T
         S = jnp.maximum(S, 0.0)
@@ -286,7 +381,7 @@ def plot_and_save_to_pdf(
         axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
         axes[1].set_xlabel("t", fontsize=20)
         axes[1].plot(sol.ts, S)
-        plt.show()
+        # plt.show()
 
     # # group be each element that is over length 1
     # # the groups associate with beta are where
@@ -385,7 +480,7 @@ def main(args: argparse.Namespace) -> None:
 
     # get model results
     start = time.time()
-    sols, entries = run_model(config=config, model=model_name)
+    sols, entries, input_dict = run_model(config=config, model=model_name)
     elapsed = time.time() - start
     print(
         f"Experiments Using {model_name} Ran In:\n{round(elapsed, 5)} Seconds.\n"
@@ -396,6 +491,7 @@ def main(args: argparse.Namespace) -> None:
         model=model_name,
         sols=sols,
         entries=entries,
+        input_dict=input_dict,
         config=config,
         to_save_as_pdf=args.save_as_pdf,
         save_name=args.save_name,
