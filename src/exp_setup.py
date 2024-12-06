@@ -198,19 +198,6 @@ def run_model(
     saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
     # choose solver
     solver = diffrax.Tsit5()
-    # unpack config variables
-    init_N = config["init_N"]
-    init_S = config["init_S"]
-    # unpack config params
-    r = config["r"]
-    init_p = config["init_p"]
-    beta = config["beta"]
-    alpha = config["alpha"]
-    d = config["d"]
-    g = config["g"]
-    c = config["c"]
-    init_k = config["init_k"]
-    init_s = config["init_s"]
     # get appropriate model and args
     if model == "DFM":
         term = diffrax.ODETerm(DFM)
@@ -218,12 +205,12 @@ def run_model(
             jnp.array(group)
             for group in list(
                 it.product(
-                    r,
-                    init_p,
-                    beta,
-                    init_k,
-                    c,
-                    init_s,
+                    config["r"],
+                    config["init_p"],
+                    config["beta"],
+                    config["init_k"],
+                    config["c"],
+                    config["init_s"],
                 )
             )
         ]
@@ -233,14 +220,14 @@ def run_model(
             jnp.array(group)
             for group in list(
                 it.product(
-                    r,
-                    init_p,
-                    beta,
-                    alpha,
-                    d,
-                    g,
-                    c,
-                    init_k,
+                    config["r"],
+                    config["init_p"],
+                    config["beta"],
+                    config["alpha"],
+                    config["d"],
+                    config["g"],
+                    config["c"],
+                    config["init_k"],
                 )
             )
         ]
@@ -248,7 +235,7 @@ def run_model(
     # by each parameter
     y0s = [
         jnp.array(pair[0], pair[1])
-        for pair in list(it.product(init_N, init_S))
+        for pair in list(it.product(config["init_N"], config["init_S"]))
     ]
     sols = [
         diffrax.diffeqsolve(
