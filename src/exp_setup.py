@@ -19,6 +19,7 @@ from typing import Any
 import diffrax
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 import toml
 from jax.typing import ArrayLike
 
@@ -111,6 +112,8 @@ def load_and_validate_config(
         )
     # if certain entries are missing, fill in
     # with default values
+    # TODO: use default or force use of all
+    # necessary components?
     if sorted(loaded_entries) != sorted(CONFIG_ENTRIES):
         default_config_path = pathlib.Path("../config/default.toml")
         if not default_config_path.is_file():
@@ -134,6 +137,7 @@ def load_and_validate_config(
     for k, v in config.items():
         if not isinstance(v, list) and k not in NON_LISTLIKE_KEYS:
             config[k] = ensure_listlike(v)
+
     # TODO: check t0, t1, dt0
     # TODO: check c, max_k, init_k
     # TODO: non-listlike initN and initS?
@@ -187,7 +191,7 @@ def run_model(
 
     Returns
     -------
-    tuple[list[jax.Array], list[jax.Array], list[jax.Array]]
+    tuple[list[jax.Array], list[tuple[int, int, list[int | float], list[int | float]]]
         The solutions, arguments, and initial
         variables for the experiments desired.
     """
@@ -201,40 +205,28 @@ def run_model(
     # get appropriate model and args
     if model == "DFM":
         term = diffrax.ODETerm(DFM)
-        args = [
-            jnp.array(group)
-            for group in list(
-                it.product(
-                    config["r"],
-                    config["init_p"],
-                    config["beta"],
-                    config["init_k"],
-                    config["c"],
-                    config["init_s"],
-                )
-            )
-        ]
+        input_dict = {
+            k: config[k]
+            for k in ["r", "init_p", "beta", "init_k", "c", "init_s"]
+        }
     if model == "DWM":
         term = diffrax.ODETerm(DWM)
-        args = [
-            jnp.array(group)
-            for group in list(
-                it.product(
-                    config["r"],
-                    config["init_p"],
-                    config["beta"],
-                    config["alpha"],
-                    config["d"],
-                    config["g"],
-                    config["c"],
-                    config["init_k"],
-                )
+        input_dict = {
+            k: config[k]
+            for k in ["r", "init_p", "beta", "alpha", "d", "g", "c", "init_k"]
+        }
+    args = [
+        jnp.array(group)
+        for group in list(
+            it.product(
+                *list(input_dict.values()),
             )
-        ]
+        )
+    ]
     # get combinations of parameters, group
     # by each parameter
     y0s = [
-        jnp.array(pair[0], pair[1])
+        jnp.array(pair)
         for pair in list(it.product(config["init_N"], config["init_S"]))
     ]
     sols = [
@@ -244,17 +236,111 @@ def run_model(
         for y0 in y0s
         for arg in args
     ]
-    return (sols, args, y0s)
+    entries = [
+        (i, j, list(y0), list(arg))
+        for i, y0 in enumerate(y0s)
+        for j, arg in enumerate(args)
+    ]
+    return (sols, entries)
 
 
-def plot_figure(
+def plot_and_save_to_pdf(
     sols: list[ArrayLike],
-    args: list[ArrayLike],
-    y0s: list[jax.Array],
-    to_save: bool,
+    entries: tuple[int, int, list[int | float], list[int | float]],
+    config: dict[str, float | int | list[int] | list[float]],
+    to_save_as_pdf: bool,
     save_name: str,
+    style: str,
 ) -> None:
-    pass
+    # use grayscale for plotting, if
+    # no style is provided
+    if style != "default":
+        base_style_path = pathlib.Path("../assets/style")
+        style_path = base_style_path / (style + ".mplstyle")
+        if style_path.exists():
+            plt.style.use(str(style_path))
+            print(f"Loaded style: {style}.")
+        else:
+            raise FileNotFoundError(f"Style file {style}.mplstyle not found.")
+    else:
+        plt.style.use("grayscale")
+    # iterate through y0s and args to plot
+    # solutions; each parameter or variable
+    # entries with over 1 element will be
+    # plotted on top of each other, with
+    # the other values held constant
+    config_num_entries = {
+        k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS
+    }
+    for k, v in config_num_entries.items():
+        # relevant_sols = [
+        #     sol
+        #     for sol, entry in zip(sols, entries)
+        #     if list(it.product(entry[2], entry[3])) == param_combo
+        # ]
+        # print(relevant_sols)
+        figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
+        axes[0].set_xlim(xmin=0)
+        axes[0].set_ylim(ymin=0)
+        axes[0].set_ylabel(r"$N$", rotation=45)
+        axes[0].set_xlabel("t")
+        axes[0].legend()
+        axes[1].set_xlim(xmin=0)
+        axes[1].set_ylim(ymin=0)
+        axes[1].set_ylabel(r"$S$", rotation=45)
+        # for sol in relevant_sols:
+        #     N, S = sol.ys.T
+        #     axes[0].plot(sol.ts, N, label=f"Combination {param_combo}")
+        #     axes[1].plot(sol.ts, S, label=f"Combination {param_combo}")
+        # axes[0].set_title(f"Parameter combination: {param_combo[0]}")
+        # axes[1].set_title(f"Parameter combination: {param_combo[1]}")
+    plt.show()
+
+    # config_num_entries = {k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS}
+    # for k, v in config_num_entries.items():
+    #     if v > 1:
+    #         # each entry has
+    #         # (i, j, list(y0), list(arg))
+    #         # where i, j is the position in
+    #         # sol
+    #         relevant_sols = [
+    #             sol for sol in sols if sol in [sols[e[0]][e[1]] for e in entries]]
+    #         figure, axes = plt.subplots(
+    #             nrows=1, ncols=2, figsize=(10, 5))
+    #         axes[0].set_xlim(xmin=0)
+    #         axes[0].set_ylim(ymin=0)
+    #         axes[0].set_ylabel(r"$N$", rotation=45)
+    #         axes[0].set_xlabel("t")
+    #         axes[0].legend()
+    #         axes[1].set_xlim(xmin=0)
+    #         axes[1].set_ylim(ymin=0)
+    #         axes[1].set_ylabel(r"$S$", rotation=45)
+    #         axes[1].set_xlabel("t")
+    #         axes[1].legend()
+    #         for sol in relevant_sols:
+    #             timepoints = sol.ts
+    #             N, S = sol.ys.T
+    #             # plot
+
+    # input_dict_lens = {k: len(v) for k, v in input_dict.items()}
+    # for i, kv in enumerate(list(input_dict_lens.items())):
+    #     # if there is more than 1 elt in list
+    #     # associated with the key
+    #     if kv[1] > 1:
+    #         # collect all sols for this key
+    #         pass
+    # for i, sol in enumerate(sols):
+
+    # for elt
+    # if to_save:
+    #     pdf_save_path =
+    #     with plt.backends.backend_pdf.PdfPages(pdf_filename) as pdf:
+    #         for fig in plt.get_fignums():
+    #             fig_instance = plt.figure(fig)
+    #             pdf.savefig(fig_instance)
+    #             plt.close(fig_instance)
+
+    # pass
 
 
 def main(args: argparse.Namespace) -> None:
@@ -267,15 +353,22 @@ def main(args: argparse.Namespace) -> None:
 
     # get model results
     start = time.time()
-    sols, ode_args, y0s = run_model(config=config, model=model_name)
+    sols, entries = run_model(config=config, model=model_name)
     elapsed = time.time() - start
     print(
         f"Experiments Using {model_name} Ran In:\n{round(elapsed, 5)} Seconds.\n"
     )
 
-    # # plot and (possibly) save
-    # plot_figure(sols=sols, to_save=args.save_as_pdf, save_name=args.save_name)
-    print(config, model_name)
+    # plot and (possibly) save
+    plot_and_save_to_pdf(
+        sols=sols,
+        entries=entries,
+        config=config,
+        to_save_as_pdf=args.save_as_pdf,
+        save_name=args.save_name,
+        style=args.style,
+    )
+    # print(config, model_name)
 
 
 if __name__ == "__main__":
@@ -302,6 +395,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--style",
         type=str,
+        default="default",
         help="(optional) The name of the style file to use. Defaults to Grayscale.",
     )
     parser.add_argument(
@@ -312,7 +406,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save_name",
         type=str,
-        default="Default_Figure_Name",
+        default="default_figure_name",
         help="(optional) The name of the plot to save.",
     )
     args = parser.parse_args()
