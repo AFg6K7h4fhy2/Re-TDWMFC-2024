@@ -24,6 +24,8 @@ jax = "^0.4.35"
 jupyter = "^1.1.1"
 matplotlib = "^3.9.3"
 toml = "^0.10.2"
+types-toml = "^0.10.8.20240310"
+mypy = "^1.13.0"
 
 [tool.poetry.urls]
 "Repository Issues" = "https://github.com/AFg6K7h4fhy2/Re-TDWMFC-2024/issues"

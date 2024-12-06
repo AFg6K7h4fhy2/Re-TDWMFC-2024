@@ -7,8 +7,9 @@ paper (The Demographic-Wealth model for
 cliodynamics) by Wittmann and Kuehn.
 """
 
+import jax
 import jax.numpy as jnp
-from jax.typing import Array
+from jax.typing import ArrayLike
 
 # def k(S: int, init_s: float, c: int, init_k: float) -> float:
 #     """
@@ -21,7 +22,7 @@ def k(S: int) -> int:
     return S
 
 
-def DFM(t: int, y: Array, args: tuple[float, float, float]) -> Array:
+def DFM(t: int, y: ArrayLike, args: tuple[float, float, float]) -> jax.Array:
     # get population and state resources
     N, S = y
     # ensure S >= 0
@@ -36,9 +37,9 @@ def DFM(t: int, y: Array, args: tuple[float, float, float]) -> Array:
 
 def DWM(
     t: int,
-    y: Array,
+    y: ArrayLike,
     args: tuple[float, float, float, float, float, float, float, float],
-) -> Array:
+) -> jax.Array:
     # get population and state resources
     N, S = y
     # ensure S >= 0
