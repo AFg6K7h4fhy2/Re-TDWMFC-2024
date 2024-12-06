@@ -8,17 +8,20 @@ cliodynamics) by Wittmann and Kuehn.
 """
 
 import jax.numpy as jnp
-from jax.typing import ArrayLike
+from jax.typing import Array
+
+# def k(S: int, init_s: float, c: int, init_k: float) -> float:
+#     """
+#     State carrying capacity.
+#     """
+#     return init_k + (c * (S / (init_s + S)))
 
 
-def k(S, init_s, c, init_k):
-    """
-    State carrying capacity.
-    """
-    return init_k + (c * (S / (init_s + S)))
+def k(S: int) -> int:
+    return S
 
 
-def DFM(t: int, y: ArrayLike, args: tuple[float]) -> ArrayLike:
+def DFM(t: int, y: Array, args: tuple[float, float, float]) -> Array:
     # get population and state resources
     N, S = y
     # ensure S >= 0
@@ -31,7 +34,11 @@ def DFM(t: int, y: ArrayLike, args: tuple[float]) -> ArrayLike:
     return jnp.array([dN, dS])
 
 
-def DWM(t: int, y: ArrayLike, args: tuple[float]) -> ArrayLike:
+def DWM(
+    t: int,
+    y: Array,
+    args: tuple[float, float, float, float, float, float, float, float],
+) -> Array:
     # get population and state resources
     N, S = y
     # ensure S >= 0

@@ -6,6 +6,7 @@ parameter values from configuration files.
 """
 
 from collections.abc import Sequence
+from typing import Any
 
 import diffrax
 import jax.numpy as jnp
@@ -13,11 +14,11 @@ import jax.numpy as jnp
 from models import DFM
 
 
-def read_config():
-    pass
+def read_config() -> None:
+    return None
 
 
-def ensure_listlike(x: any):
+def ensure_listlike(x: Any) -> Sequence[Any]:
     """
     Idea sourced from the following:
     https://stackoverflow.com/questions/66485566/
@@ -25,11 +26,11 @@ def ensure_listlike(x: any):
     return x if isinstance(x, Sequence) else [x]
 
 
-def plot_figure():
+def plot_figure() -> None:
     pass
 
 
-def run_model():
+def run_model() -> None:
     term = diffrax.ODETerm(DFM)
     solver = diffrax.Tsit5()
     t0 = 0
@@ -48,7 +49,7 @@ def run_model():
     print(sol)
 
 
-def main():
+def main() -> None:
     pass
 
 
