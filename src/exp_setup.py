@@ -11,17 +11,11 @@ python3 exp_setup.py --DFM --config "fig01.toml"
 
 import argparse
 import pathlib
-import time
 from collections.abc import Sequence
 from typing import Any
 
-import diffrax
-import jax
-import jax.numpy as jnp
 import toml
 from jax.typing import ArrayLike
-
-from models import DFM
 
 CONFIG_ENTRIES = [
     "init_N",
@@ -48,7 +42,9 @@ def check_values_interval(
     # check that each entry in values is
     # either float or integer
     if not all(isinstance(value, (int, float)) for value in values):
-        raise TypeError("All values must be either int or float.")
+        raise TypeError(
+            f"All values must be either int or float; got {values}."
+        )
     # check that the values are captured in
     # an appropriate range
     if all(min_value <= value <= max_value for value in values):
@@ -128,9 +124,9 @@ def load_and_validate_config(
         config = {**config, **diff_dict}
     # ensure all config entries are listlike
     # and then have valid values
-    for k in config.keys():
-        if not isinstance(k, list) and k not in NON_LISTLIKE_KEYS:
-            config[k] = ensure_listlike(k)
+    for k, v in config.items():
+        if not isinstance(v, list) and k not in NON_LISTLIKE_KEYS:
+            config[k] = ensure_listlike(v)
     # TODO: check t0, t1, dt0
     # TODO: check c, max_k, init_k
     check_values_interval(
@@ -154,29 +150,52 @@ def load_and_validate_config(
         raise ValueError(
             f"Maximum carry capacity (got {max_max_k}) must be greater than initial carry capacity (got {max_init_k})."
         )
+    print(config)
     return config
 
 
-def run_model(
-    config: dict[str, float | int | list[int] | list[float]], model: str
-) -> jax.Array:
-    print(config)
-    term = diffrax.ODETerm(DFM)
-    solver = diffrax.Tsit5()
-    t0 = 0
-    t1 = 500
-    dt0 = 1
-    init_p = 1
-    r = 0.02
-    init_N = 0.5
-    init_S = 0.0
-    y0 = jnp.array([init_N, init_S])
-    args_01 = jnp.array([r, init_p, 0.0])
-    saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
-    sol = diffrax.diffeqsolve(
-        term, solver, t0, t1, dt0, y0, args=args_01, saveat=saveat
-    )
-    return sol
+# def run_model(
+#     config: dict[str, float | int | list[int] | list[float]], model: str
+# ) -> jax.Array:
+#     # get model times from config
+#     t0 = config["t0"]
+#     t1 = config["t1"]
+#     dt0 = config["dt0"]
+#     saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
+#     # choose solver
+#     solver = diffrax.Tsit5()
+#     # get appropriate model and args
+#     if model == "DFM":
+#         term = diffrax.ODETerm(DFM)
+#     if model == "DWM":
+#         term = diffrax.ODETerm(DWM)
+#     # get combinations of parameters, group
+#     # by each parameter
+#     y0s = [
+#         jnp.array([pair[0], pair[1]])
+#         for pair in list(it.product(config["init_N"], config["init_S"]))
+#     ]
+#     args_01 = jnp.array([r, init_p, 0.0])
+#     # sol = diffrax.diffeqsolve(
+#     #     term, solver, t0, t1, dt0, y0, args=args_01, saveat=saveat
+#     # )
+
+#     # t0 = 0
+#     # t1 = 500
+#     # dt0 = 1
+#     # init_N = 0.5
+#     # init_S = 0.0
+#     # init_p = 1
+#     # init_s = 10
+#     # init_k = 1
+#     # max_k = 4
+#     # c = 3
+#     # r = 0.02
+#     # beta = 0.4
+
+#     # print(config)
+
+#     return args_01
 
 
 def plot_figure(sols: ArrayLike, to_save: bool, save_name: str) -> None:
@@ -191,14 +210,15 @@ def main(args: argparse.Namespace) -> None:
     # get model name
     model_name = "DFM" if args.DFM else "DWM"
 
-    # get model results
-    start = time.time()
-    sols = run_model(config=config, model=model_name)
-    elapsed = time.time() - start
-    print(f"Model {model_name} Ran In {round(elapsed, 5)} Seconds.")
+    # # get model results
+    # start = time.time()
+    # sols = run_model(config=config, model=model_name)
+    # elapsed = time.time() - start
+    # print(f"Model {model_name} Ran In {round(elapsed, 5)} Seconds.")
 
-    # plot and (possibly) save
-    plot_figure(sols=sols, to_save=args.save_as_pdf, save_name=args.save_name)
+    # # plot and (possibly) save
+    # plot_figure(sols=sols, to_save=args.save_as_pdf, save_name=args.save_name)
+    print(config, model_name)
 
 
 if __name__ == "__main__":
