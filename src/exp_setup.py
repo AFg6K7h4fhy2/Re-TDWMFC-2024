@@ -245,6 +245,7 @@ def run_model(
 
 
 def plot_and_save_to_pdf(
+    model: str,
     sols: list[ArrayLike],
     entries: tuple[int, int, list[int | float], list[int | float]],
     config: dict[str, float | int | list[int] | list[float]],
@@ -264,37 +265,64 @@ def plot_and_save_to_pdf(
             raise FileNotFoundError(f"Style file {style}.mplstyle not found.")
     else:
         plt.style.use("grayscale")
-    # iterate through y0s and args to plot
-    # solutions; each parameter or variable
-    # entries with over 1 element will be
-    # plotted on top of each other, with
-    # the other values held constant
-    config_num_entries = {
-        k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS
-    }
-    for k, v in config_num_entries.items():
-        # relevant_sols = [
-        #     sol
-        #     for sol, entry in zip(sols, entries)
-        #     if list(it.product(entry[2], entry[3])) == param_combo
-        # ]
-        # print(relevant_sols)
+    for sol in sols:
+        N, S = sol.ys.T
+        S = jnp.maximum(S, 0.0)
         figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-        axes[0].set_xlim(xmin=0)
-        axes[0].set_ylim(ymin=0)
-        axes[0].set_ylabel(r"$N$", rotation=45)
-        axes[0].set_xlabel("t")
-        axes[0].legend()
-        axes[1].set_xlim(xmin=0)
-        axes[1].set_ylim(ymin=0)
-        axes[1].set_ylabel(r"$S$", rotation=45)
-        # for sol in relevant_sols:
-        #     N, S = sol.ys.T
-        #     axes[0].plot(sol.ts, N, label=f"Combination {param_combo}")
-        #     axes[1].plot(sol.ts, S, label=f"Combination {param_combo}")
-        # axes[0].set_title(f"Parameter combination: {param_combo[0]}")
-        # axes[1].set_title(f"Parameter combination: {param_combo[1]}")
-    plt.show()
+        axes[0].set_title(f"{model}: Population Change", fontsize=20)
+        # axes[0].set_xlim(xmin=0)
+        # axes[0].set_ylim(ymin=0)
+        axes[0].set_ylabel(r"$N$", rotation=90, fontsize=20)
+        axes[0].set_xlabel("t", fontsize=20)
+        axes[0].plot(sol.ts, N)
+        # axes[0].legend()
+        # axes[1].set_xlim(xmin=0)
+        # axes[1].set_ylim(ymin=0)
+        axes[1].set_title(f"{model}: State Resources", fontsize=20)
+        axes[1].set_ylabel(r"$S$", rotation=90, fontsize=20)
+        axes[1].set_xlabel("t", fontsize=20)
+        axes[1].plot(sol.ts, S)
+        plt.show()
+
+    # # group be each element that is over length 1
+    # # the groups associate with beta are where
+    # # all non-beta entries remain the same
+    # plot_sol_dict = {k: [sol for sol, entry in zip(sol, entries) if entry[2] and entry[3] ] for k, v in config.items() if k not in NON_LISTLIKE_KEYS}
+
+    # #
+    # group_key = tuple(comb[i] for i in indices)
+
+    # # iterate through y0s and args to plot
+    # # solutions; each parameter or variable
+    # # entries with over 1 element will be
+    # # plotted on top of each other, with
+    # # the other values held constant
+    # config_num_entries = {
+    #     k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS
+    # }
+    # for k, v in config_num_entries.items():
+    #     # relevant_sols = [
+    #     #     sol
+    #     #     for sol, entry in zip(sols, entries)
+    #     #     if list(it.product(entry[2], entry[3])) == param_combo
+    #     # ]
+    #     # print(relevant_sols)
+    #     figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
+    #     axes[0].set_xlim(xmin=0)
+    #     axes[0].set_ylim(ymin=0)
+    #     axes[0].set_ylabel(r"$N$", rotation=45)
+    #     axes[0].set_xlabel("t")
+    #     axes[0].legend()
+    #     axes[1].set_xlim(xmin=0)
+    #     axes[1].set_ylim(ymin=0)
+    #     axes[1].set_ylabel(r"$S$", rotation=45)
+    #     # for sol in relevant_sols:
+    #     #     N, S = sol.ys.T
+    #     #     axes[0].plot(sol.ts, N, label=f"Combination {param_combo}")
+    #     #     axes[1].plot(sol.ts, S, label=f"Combination {param_combo}")
+    #     # axes[0].set_title(f"Parameter combination: {param_combo[0]}")
+    #     # axes[1].set_title(f"Parameter combination: {param_combo[1]}")
+    # plt.show()
 
     # config_num_entries = {k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS}
     # for k, v in config_num_entries.items():
@@ -361,6 +389,7 @@ def main(args: argparse.Namespace) -> None:
 
     # plot and (possibly) save
     plot_and_save_to_pdf(
+        model=model_name,
         sols=sols,
         entries=entries,
         config=config,
