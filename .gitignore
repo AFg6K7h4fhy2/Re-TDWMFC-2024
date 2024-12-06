@@ -652,6 +652,9 @@ _site
 _freeze
 .DS_Store
 DS_Store
+<<<<<<< HEAD
 _book/
 _book
+=======
+>>>>>>> origin/main
 author_emails.txt

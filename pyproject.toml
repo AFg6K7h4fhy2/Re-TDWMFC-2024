@@ -6,6 +6,8 @@ authors = ["AFg6K7h4fhy2 <127630341+AFg6K7h4fhy2@users.noreply.github.com>"]
 license = "Apache-2.0"
 package-mode = false
 readme = "README.md"
+repository = "https://github.com/AFg6K7h4fhy2/Re-TDWMFC-2024"
+keywords = ["cliodynamics", "python", "modeling", "mathematics", "demography", "history"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -22,6 +24,10 @@ jax = "^0.4.35"
 jupyter = "^1.1.1"
 matplotlib = "^3.9.3"
 toml = "^0.10.2"
+
+[tool.poetry.urls]
+"Repository Issues" = "https://github.com/AFg6K7h4fhy2/Re-TDWMFC-2024/issues"
+"Author Homepage" = "https://github.com/AFg6K7h4fhy2"
 
 [build-system]
 requires = ["poetry-core"]
