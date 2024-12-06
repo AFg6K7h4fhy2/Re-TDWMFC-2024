@@ -37,6 +37,30 @@ CONFIG_ENTRIES = [
     "t1",
     "dt0",
 ]
+NON_LISTLIKE_KEYS = ["t0", "t1", "dt0"]
+
+
+def check_values_interval(
+    values: list[int] | list[float],
+    min_value: int | float,
+    max_value: int | float,
+) -> bool:
+    # check that each entry in values is
+    # either float or integer
+    if not all(isinstance(value, (int, float)) for value in values):
+        raise TypeError("All values must be either int or float.")
+    # check that the values are captured in
+    # an appropriate range
+    if all(min_value <= value <= max_value for value in values):
+        return True
+    else:
+        raise ValueError(
+            f"All values must be between {min_value} and {max_value}."
+        )
+
+
+def ensure_listlike(x: Any) -> Sequence[Any]:
+    return x if isinstance(x, Sequence) else [x]
 
 
 def load_and_validate_config(
@@ -102,26 +126,35 @@ def load_and_validate_config(
             if k not in loaded_entries
         }
         config = {**config, **diff_dict}
+    # ensure all config entries are listlike
+    # and then have valid values
+    for k in config.keys():
+        if not isinstance(k, list) and k not in NON_LISTLIKE_KEYS:
+            config[k] = ensure_listlike(k)
+    # TODO: check t0, t1, dt0
+    # TODO: check c, max_k, init_k
+    check_values_interval(
+        values=config["init_N"], min_value=0.01, max_value=5.0
+    )
+    check_values_interval(
+        values=config["init_S"], min_value=0.0, max_value=5.0
+    )
+    check_values_interval(values=config["init_p"], min_value=1, max_value=4)
+    check_values_interval(values=config["init_s"], min_value=1, max_value=30)
+    check_values_interval(values=config["init_k"], min_value=1, max_value=10)
+    check_values_interval(values=config["max_k"], min_value=1, max_value=10)
+    check_values_interval(values=config["c"], min_value=1, max_value=10)
+    check_values_interval(values=config["r"], min_value=0.01, max_value=0.90)
+    check_values_interval(
+        values=config["beta"], min_value=0.01, max_value=0.90
+    )
+    max_init_k = max(config["init_k"])
+    max_max_k = max(config["max_k"])
+    if max_init_k >= max_max_k:
+        raise ValueError(
+            f"Maximum carry capacity (got {max_max_k}) must be greater than initial carry capacity (got {max_init_k})."
+        )
     return config
-
-    # ensure all config entries are valid
-    # assert config["model"]["t"]
-    # assert config["model"]["t"]
-    # assert config["model"]["t"]
-    # assert config["parameters"]["t"]
-    # assert config["parameters"]["t"]
-
-    # # ensure constraints apply to certain
-    # # variables
-    # beta_cond =
-
-
-def ensure_listlike(x: Any) -> Sequence[Any]:
-    """
-    Idea sourced from the following:
-    https://stackoverflow.com/questions/66485566/
-    """
-    return x if isinstance(x, Sequence) else [x]
 
 
 def run_model(
@@ -165,7 +198,7 @@ def main(args: argparse.Namespace) -> None:
     print(f"Model {model_name} Ran In {round(elapsed, 5)} Seconds.")
 
     # plot and (possibly) save
-    plot_figure(sols=sols, to_save=args.save, save_name=args.save_name)
+    plot_figure(sols=sols, to_save=args.save_as_pdf, save_name=args.save_name)
 
 
 if __name__ == "__main__":
@@ -195,7 +228,7 @@ if __name__ == "__main__":
         help="(optional) The name of the style file to use. Defaults to Grayscale.",
     )
     parser.add_argument(
-        "--save",
+        "--save_as_pdf",
         action="store_true",
         help="(optional) Whether to save plots that were generated.",
     )
