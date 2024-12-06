@@ -249,7 +249,7 @@ def run_model(
         for arg in args
     ]
     entries = [
-        list(it.product(y0.tolist(), arg.tolist()))
+        y0.tolist() + arg.tolist()
         for i, y0 in enumerate(y0s)
         for j, arg in enumerate(args)
     ]
@@ -284,9 +284,6 @@ def plot_and_save_to_pdf(  #
         k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS
     }
     full_var_params = ["init_N", "init_S"] + list(input_dict.keys())
-    # full_var_param_prod = list(
-    #     it.product(["init_N", "init_S"], list(input_dict.keys()))
-    # )
     full_entry_indexed = {
         k: i
         for i, k in zip(
@@ -301,8 +298,8 @@ def plot_and_save_to_pdf(  #
             # the groups for a particular
             # entry (e.g. beta)
             groups_for_k = [
-                (elt[0], elt[1][full_entry_indexed[k]])
-                for elt in sorted(
+                list(group)
+                for _, group in it.groupby(
                     sols_and_entries,
                     key=lambda s_e: tuple(
                         [
@@ -312,162 +309,39 @@ def plot_and_save_to_pdf(  #
                         ]
                     ),
                 )
-            ]
-            print(
-                tuple(
-                    [
-                        s_e[1][i]
-                        for s_e in sols_and_entries
-                        for i in full_entry_indexed.values()
-                        if i != full_entry_indexed[k]
-                    ]
-                )
-            )
+            ][0]
             figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
             axes[0].set_title(f"{model}: Population Change", fontsize=20)
-            axes[0].set_xlim(xmin=0)
-            axes[0].set_ylim(ymin=0)
             axes[0].set_ylabel(r"$N$", rotation=90, fontsize=15)
             axes[0].set_xlabel("t", fontsize=20)
-            axes[0].legend()
-            axes[1].set_xlim(xmin=0)
-            axes[1].set_ylim(ymin=0)
             axes[1].set_title(f"{model}: State Resources", fontsize=20)
             axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
             axes[1].set_xlabel("t", fontsize=20)
             for elt in groups_for_k:
-                param_val = elt[1]
-                print(LABELS[k])
-                print(param_val)
+                param_val = elt[1][full_entry_indexed[k]]
+                print(k, LABELS[k], param_val, full_entry_indexed[k])
                 sol = elt[0]
                 N, S = sol.ys.T
                 S = jnp.maximum(S, 0.0)
-                axes[1].plot(sol.ts, S, label=rf"{LABELS[k]}={param_val}")
-                axes[0].plot(sol.ts, N, label=rf"{LABELS[k]}={param_val}")
+                timepoints = sol.ts
+                axes[0].plot(
+                    timepoints.tolist(),
+                    N.tolist(),
+                    label=rf"{LABELS[k]}={round(param_val, 2)}",
+                )
+                axes[1].plot(
+                    timepoints.tolist(),
+                    S.tolist(),
+                    label=rf"{LABELS[k]}={round(param_val, 2)}",
+                )
+            axes[0].legend()
+            axes[1].legend()
+            # these must come after plot()
+            axes[1].set_xlim(xmin=0)
+            axes[1].set_ylim(ymin=0)
+            axes[0].set_xlim(xmin=0)
+            axes[0].set_ylim(ymin=0)
             plt.show()
-
-            # indices_to_sort_by = sol_indices[:i] + sol_indices[i+1:]
-
-    # (i, j, list(it.product(list(y0), list(arg))))
-
-    #     for i, k in enumerate([k1: [1,2], k2: [3,4], k3:[5]])
-    #   if len(k) > 1:
-    #     # group all
-    #     groups = []
-    #     for sol in sols:
-    #         sol_indices = list(range(len(sol)))
-    #         sol_sort_vals = sol_indices[:i] + sol_indices[i+1:]
-
-    #         sorted_sol =
-
-    # [(1, 3, 5), (1, 4, 5), (2, 3, 5), (2, 4, 5)]
-
-    # [1,2] --> (1, 3, 5), (2, 3, 5)
-
-    for sol in sols:
-        N, S = sol.ys.T
-        S = jnp.maximum(S, 0.0)
-        figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-        axes[0].set_title(f"{model}: Population Change", fontsize=20)
-        # axes[0].set_xlim(xmin=0)
-        # axes[0].set_ylim(ymin=0)
-        axes[0].set_ylabel(r"$N$", rotation=90, fontsize=15)
-        axes[0].set_xlabel("t", fontsize=20)
-        axes[0].plot(sol.ts, N)
-        # axes[0].legend()
-        # axes[1].set_xlim(xmin=0)
-        # axes[1].set_ylim(ymin=0)
-        axes[1].set_title(f"{model}: State Resources", fontsize=20)
-        axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
-        axes[1].set_xlabel("t", fontsize=20)
-        axes[1].plot(sol.ts, S)
-        # plt.show()
-
-    # # group be each element that is over length 1
-    # # the groups associate with beta are where
-    # # all non-beta entries remain the same
-    # plot_sol_dict = {k: [sol for sol, entry in zip(sol, entries) if entry[2] and entry[3] ] for k, v in config.items() if k not in NON_LISTLIKE_KEYS}
-
-    # #
-    # group_key = tuple(comb[i] for i in indices)
-
-    # # iterate through y0s and args to plot
-    # # solutions; each parameter or variable
-    # # entries with over 1 element will be
-    # # plotted on top of each other, with
-    # # the other values held constant
-    # config_num_entries = {
-    #     k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS
-    # }
-    # for k, v in config_num_entries.items():
-    #     # relevant_sols = [
-    #     #     sol
-    #     #     for sol, entry in zip(sols, entries)
-    #     #     if list(it.product(entry[2], entry[3])) == param_combo
-    #     # ]
-    #     # print(relevant_sols)
-    #     figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-    #     axes[0].set_xlim(xmin=0)
-    #     axes[0].set_ylim(ymin=0)
-    #     axes[0].set_ylabel(r"$N$", rotation=45)
-    #     axes[0].set_xlabel("t")
-    #     axes[0].legend()
-    #     axes[1].set_xlim(xmin=0)
-    #     axes[1].set_ylim(ymin=0)
-    #     axes[1].set_ylabel(r"$S$", rotation=45)
-    #     # for sol in relevant_sols:
-    #     #     N, S = sol.ys.T
-    #     #     axes[0].plot(sol.ts, N, label=f"Combination {param_combo}")
-    #     #     axes[1].plot(sol.ts, S, label=f"Combination {param_combo}")
-    #     # axes[0].set_title(f"Parameter combination: {param_combo[0]}")
-    #     # axes[1].set_title(f"Parameter combination: {param_combo[1]}")
-    # plt.show()
-
-    # config_num_entries = {k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS}
-    # for k, v in config_num_entries.items():
-    #     if v > 1:
-    #         # each entry has
-    #         # (i, j, list(y0), list(arg))
-    #         # where i, j is the position in
-    #         # sol
-    #         relevant_sols = [
-    #             sol for sol in sols if sol in [sols[e[0]][e[1]] for e in entries]]
-    #         figure, axes = plt.subplots(
-    #             nrows=1, ncols=2, figsize=(10, 5))
-    #         axes[0].set_xlim(xmin=0)
-    #         axes[0].set_ylim(ymin=0)
-    #         axes[0].set_ylabel(r"$N$", rotation=45)
-    #         axes[0].set_xlabel("t")
-    #         axes[0].legend()
-    #         axes[1].set_xlim(xmin=0)
-    #         axes[1].set_ylim(ymin=0)
-    #         axes[1].set_ylabel(r"$S$", rotation=45)
-    #         axes[1].set_xlabel("t")
-    #         axes[1].legend()
-    #         for sol in relevant_sols:
-    #             timepoints = sol.ts
-    #             N, S = sol.ys.T
-    #             # plot
-
-    # input_dict_lens = {k: len(v) for k, v in input_dict.items()}
-    # for i, kv in enumerate(list(input_dict_lens.items())):
-    #     # if there is more than 1 elt in list
-    #     # associated with the key
-    #     if kv[1] > 1:
-    #         # collect all sols for this key
-    #         pass
-    # for i, sol in enumerate(sols):
-
-    # for elt
-    # if to_save:
-    #     pdf_save_path =
-    #     with plt.backends.backend_pdf.PdfPages(pdf_filename) as pdf:
-    #         for fig in plt.get_fignums():
-    #             fig_instance = plt.figure(fig)
-    #             pdf.savefig(fig_instance)
-    #             plt.close(fig_instance)
-
-    # pass
 
 
 def main(args: argparse.Namespace) -> None:
