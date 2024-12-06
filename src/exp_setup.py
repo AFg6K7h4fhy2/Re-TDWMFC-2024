@@ -10,12 +10,19 @@ python3 exp_setup.py --DFM --config "fig01.toml"
 """
 
 import argparse
+import itertools as it
 import pathlib
+import time
 from collections.abc import Sequence
 from typing import Any
 
+import diffrax
+import jax
+import jax.numpy as jnp
 import toml
 from jax.typing import ArrayLike
+
+from models import DFM, DWM
 
 CONFIG_ENTRIES = [
     "init_N",
@@ -129,6 +136,7 @@ def load_and_validate_config(
             config[k] = ensure_listlike(v)
     # TODO: check t0, t1, dt0
     # TODO: check c, max_k, init_k
+    # TODO: non-listlike initN and initS?
     check_values_interval(
         values=config["init_N"], min_value=0.01, max_value=5.0
     )
@@ -142,7 +150,7 @@ def load_and_validate_config(
     check_values_interval(values=config["c"], min_value=1, max_value=10)
     check_values_interval(values=config["r"], min_value=0.01, max_value=0.90)
     check_values_interval(
-        values=config["beta"], min_value=0.01, max_value=0.90
+        values=config["beta"], min_value=0.00, max_value=0.90
     )
     max_init_k = max(config["init_k"])
     max_max_k = max(config["max_k"])
@@ -154,51 +162,111 @@ def load_and_validate_config(
     return config
 
 
-# def run_model(
-#     config: dict[str, float | int | list[int] | list[float]], model: str
-# ) -> jax.Array:
-#     # get model times from config
-#     t0 = config["t0"]
-#     t1 = config["t1"]
-#     dt0 = config["dt0"]
-#     saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
-#     # choose solver
-#     solver = diffrax.Tsit5()
-#     # get appropriate model and args
-#     if model == "DFM":
-#         term = diffrax.ODETerm(DFM)
-#     if model == "DWM":
-#         term = diffrax.ODETerm(DWM)
-#     # get combinations of parameters, group
-#     # by each parameter
-#     y0s = [
-#         jnp.array([pair[0], pair[1]])
-#         for pair in list(it.product(config["init_N"], config["init_S"]))
-#     ]
-#     args_01 = jnp.array([r, init_p, 0.0])
-#     # sol = diffrax.diffeqsolve(
-#     #     term, solver, t0, t1, dt0, y0, args=args_01, saveat=saveat
-#     # )
+def run_model(
+    config: dict[str, float | int | list[int] | list[float]], model: str
+) -> tuple[list[jax.Array], list[jax.Array], list[jax.Array]]:
+    """
+    Run a single cliodynamics model (DFM or
+    DWM) using a combination of variables and
+    parameters.
 
-#     # t0 = 0
-#     # t1 = 500
-#     # dt0 = 1
-#     # init_N = 0.5
-#     # init_S = 0.0
-#     # init_p = 1
-#     # init_s = 10
-#     # init_k = 1
-#     # max_k = 4
-#     # c = 3
-#     # r = 0.02
-#     # beta = 0.4
+    Parameters
+    ----------
+    config : dict[str, float | int | list[int] | list[float]]
+        A dictionary of model specifications,
+        parameters, and variables. The
+        following parameters and variables
+        are permitted to be lists: init_N,
+        init_S, init_p, init_s, init_k,
+        max_k, c, r, beta. There are certain
+        conditions for these parameters that
+        must be met.
+    model : str
+        The name of the model. Either DFM
+        or DWM.
 
-#     # print(config)
+    Returns
+    -------
+    tuple[list[jax.Array], list[jax.Array], list[jax.Array]]
+        The solutions, arguments, and initial
+        variables for the experiments desired.
+    """
+    # get model times from config
+    t0 = config["t0"]
+    t1 = config["t1"]
+    dt0 = config["dt0"]
+    saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
+    # choose solver
+    solver = diffrax.Tsit5()
+    # unpack config variables
+    init_N = config["init_N"]
+    init_S = config["init_S"]
+    # unpack config params
+    r = config["r"]
+    init_p = config["init_p"]
+    beta = config["beta"]
+    alpha = config["alpha"]
+    d = config["d"]
+    g = config["g"]
+    c = config["c"]
+    init_k = config["init_k"]
+    init_s = config["init_s"]
+    # get appropriate model and args
+    if model == "DFM":
+        term = diffrax.ODETerm(DFM)
+        args = [
+            jnp.array(group)
+            for group in list(
+                it.product(
+                    r,
+                    init_p,
+                    beta,
+                    init_k,
+                    c,
+                    init_s,
+                )
+            )
+        ]
+    if model == "DWM":
+        term = diffrax.ODETerm(DWM)
+        args = [
+            jnp.array(group)
+            for group in list(
+                it.product(
+                    r,
+                    init_p,
+                    beta,
+                    alpha,
+                    d,
+                    g,
+                    c,
+                    init_k,
+                )
+            )
+        ]
+    # get combinations of parameters, group
+    # by each parameter
+    y0s = [
+        jnp.array(pair[0], pair[1])
+        for pair in list(it.product(init_N, init_S))
+    ]
+    sols = [
+        diffrax.diffeqsolve(
+            term, solver, t0, t1, dt0, y0, args=arg, saveat=saveat
+        )
+        for y0 in y0s
+        for arg in args
+    ]
+    return (sols, args, y0s)
 
-#     return args_01
 
-
-def plot_figure(sols: ArrayLike, to_save: bool, save_name: str) -> None:
+def plot_figure(
+    sols: list[ArrayLike],
+    args: list[ArrayLike],
+    y0s: list[jax.Array],
+    to_save: bool,
+    save_name: str,
+) -> None:
     pass
 
 
@@ -210,11 +278,13 @@ def main(args: argparse.Namespace) -> None:
     # get model name
     model_name = "DFM" if args.DFM else "DWM"
 
-    # # get model results
-    # start = time.time()
-    # sols = run_model(config=config, model=model_name)
-    # elapsed = time.time() - start
-    # print(f"Model {model_name} Ran In {round(elapsed, 5)} Seconds.")
+    # get model results
+    start = time.time()
+    sols, ode_args, y0s = run_model(config=config, model=model_name)
+    elapsed = time.time() - start
+    print(
+        f"Experiments Using {model_name} Ran In:\n{round(elapsed, 5)} Seconds.\n"
+    )
 
     # # plot and (possibly) save
     # plot_figure(sols=sols, to_save=args.save_as_pdf, save_name=args.save_name)

@@ -17,4 +17,5 @@ dot_ist = ".ist"
 extend-exclude = [
     ".gitignore",
     ".pre-commit-config.yaml",
-    "./.github/ISSUE_TEMPLATE/*.md"]
+    "./.github/ISSUE_TEMPLATE/*.md",
+    "*.bib"]
