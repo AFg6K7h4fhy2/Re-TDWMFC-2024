@@ -23,11 +23,24 @@ from jax.typing import ArrayLike
 
 from models import DFM
 
-CONFIG_GROUPS = ["model", "variables", "parameters"]
+CONFIG_ENTRIES = [
+    "init_N",
+    "init_S",
+    "init_p",
+    "init_s",
+    "init_k",
+    "max_k",
+    "c",
+    "r",
+    "beta",
+    "t0",
+    "t1",
+    "dt0",
+]
 
 
-def read_and_load_config(
-    config_path: pathlib.Path,
+def load_and_validate_config(
+    config_file: str,
 ) -> dict[str, float | int | list[int] | list[float]]:
     """
     Extract content specified in a TOML
@@ -35,23 +48,72 @@ def read_and_load_config(
 
     Parameters
     ----------
-    file_path :
-        X
+    config_file : str
+        The name of the config file.
 
     Returns
     -------
-
+    dict[str, float | int | list[int] | list[float]]
+        A dictionary of model specifications,
+        parameters, and variables. The
+        following parameters and variables
+        are permitted to be lists: init_N,
+        init_S, init_p, init_s, init_k,
+        max_k, c, r, beta. There are certain
+        conditions for these parameters that
+        must be met.
     """
+    # the established config location
+    base_path = pathlib.Path("../config")
+    config_path = base_path / config_file
+    # confirm the config file exists
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+    # attempt loading the toml config file
     try:
-        loaded_toml = toml.load(config_path)
+        config = toml.load(config_path)
     except Exception as e:
         raise Exception(f"Error while loading TOML: {e}")
-    loaded_keys = list(loaded_toml.keys())
-    if sorted(loaded_keys) != sorted(CONFIG_GROUPS):
+    # ensure that the entries are subset of
+    # required entries
+    loaded_entries = list(config.keys())
+    if not set(loaded_entries).issubset(set(CONFIG_ENTRIES)):
+        diff = set(loaded_entries).difference(set(CONFIG_ENTRIES))
         raise ValueError(
-            f"Error: The keys in the TOML file are {loaded_keys}, but expected {CONFIG_GROUPS}."
+            f"Foreign keys present in the config: {diff}.\nAccepted: {set(CONFIG_ENTRIES)}"
         )
-    return loaded_toml
+    # if certain entries are missing, fill in
+    # with default values
+    if sorted(loaded_entries) != sorted(CONFIG_ENTRIES):
+        default_config_path = pathlib.Path("../config/default.toml")
+        if not default_config_path.is_file():
+            raise FileNotFoundError(
+                f"Default config file not found: {default_config_path}"
+            )
+        try:
+            default_config = toml.load(default_config_path)
+        except Exception as e:
+            raise Exception(f"Error while loading default TOML: {e}")
+        default_entries = list(default_config.keys())
+        diff_default = set(default_entries).difference(set(loaded_entries))
+        diff_dict = {
+            k: default_config[k]
+            for k in list(diff_default)
+            if k not in loaded_entries
+        }
+        config = {**config, **diff_dict}
+    return config
+
+    # ensure all config entries are valid
+    # assert config["model"]["t"]
+    # assert config["model"]["t"]
+    # assert config["model"]["t"]
+    # assert config["parameters"]["t"]
+    # assert config["parameters"]["t"]
+
+    # # ensure constraints apply to certain
+    # # variables
+    # beta_cond =
 
 
 def ensure_listlike(x: Any) -> Sequence[Any]:
@@ -91,7 +153,7 @@ def plot_figure(sols: ArrayLike, to_save: bool, save_name: str) -> None:
 def main(args: argparse.Namespace) -> None:
 
     # get configuration file
-    config = read_and_load_config(config_path=args.config)
+    config = load_and_validate_config(config_file=args.config)
 
     # get model name
     model_name = "DFM" if args.DFM else "DWM"
@@ -100,7 +162,7 @@ def main(args: argparse.Namespace) -> None:
     start = time.time()
     sols = run_model(config=config, model=model_name)
     elapsed = time.time() - start
-    print(f"Model {model_name} Ran In {elapsed} Seconds.")
+    print(f"Model {model_name} Ran In {round(elapsed, 5)} Seconds.")
 
     # plot and (possibly) save
     plot_figure(sols=sols, to_save=args.save, save_name=args.save_name)

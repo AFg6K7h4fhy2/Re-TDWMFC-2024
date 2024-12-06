@@ -1,6 +1,7 @@
 t0 = 0
 t1 = 500
 dt0 = 1
+init_N = 0.5
 init_S = 0.0
 init_p = 1
 init_s = 10

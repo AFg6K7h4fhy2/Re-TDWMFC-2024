@@ -18,3 +18,41 @@ https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
 The Open Source guide
 
 https://opensource.guide/
+
+The TOML file originally had:
+
+[model]
+t0 = 0
+t1 = 500
+dt0 = 1
+
+[variables]
+init_N = 0.5
+init_S = 0.0
+
+[parameters]
+init_p = 1
+init_s = 10
+init_k = 1
+max_k = 4
+c = 3
+r = 0.02
+beta = 0.4
+
+but was changed to
+
+t0 = 0
+t1 = 500
+dt0 = 1
+init_N = 0.5
+init_S = 0.0
+init_p = 1
+init_s = 10
+init_k = 1
+max_k = 4
+c = 3
+r = 0.02
+beta = 0.4
+
+since plainly it was much easier to verify
+that the config was valid.
