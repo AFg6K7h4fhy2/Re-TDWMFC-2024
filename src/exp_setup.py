@@ -296,52 +296,77 @@ def plot_and_save_to_pdf(  #
     for k, v in full_entry_indexed.items():
         if len_each_key[k] > 1:
             # the groups for a particular
-            # entry (e.g. beta)
-            groups_for_k = [
-                list(group)
-                for _, group in it.groupby(
-                    sols_and_entries,
-                    key=lambda s_e: tuple(
-                        [
-                            s_e[1][i]
-                            for i in full_entry_indexed.values()
-                            if i != full_entry_indexed[k]
-                        ]
-                    ),
-                )
-            ][0]
-            figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-            axes[0].set_title(f"{model}: Population Change", fontsize=20)
-            axes[0].set_ylabel(r"$N$", rotation=90, fontsize=15)
-            axes[0].set_xlabel("t", fontsize=20)
-            axes[1].set_title(f"{model}: State Resources", fontsize=20)
-            axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
-            axes[1].set_xlabel("t", fontsize=20)
-            for elt in groups_for_k:
-                param_val = elt[1][full_entry_indexed[k]]
-                print(k, LABELS[k], param_val, full_entry_indexed[k])
-                sol = elt[0]
-                N, S = sol.ys.T
-                S = jnp.maximum(S, 0.0)
-                timepoints = sol.ts
-                axes[0].plot(
-                    timepoints.tolist(),
-                    N.tolist(),
-                    label=rf"{LABELS[k]}={round(param_val, 2)}",
-                )
-                axes[1].plot(
-                    timepoints.tolist(),
-                    S.tolist(),
-                    label=rf"{LABELS[k]}={round(param_val, 2)}",
-                )
-            axes[0].legend()
-            axes[1].legend()
-            # these must come after plot()
-            axes[1].set_xlim(xmin=0)
-            axes[1].set_ylim(ymin=0)
-            axes[0].set_xlim(xmin=0)
-            axes[0].set_ylim(ymin=0)
-            plt.show()
+            # entry (e.g. beta); this is get
+            # 1 group for each r, should be
+            # two
+            # print([e for e in full_entry_indexed.values() if e != full_entry_indexed[k]])
+            # print([elt[1] for elt in sorted(sols_and_entries,
+            #         key=lambda s_e: tuple(
+            #             [
+            #                 s_e[1][i]
+            #                 for i in [e for e in full_entry_indexed.values() if e != full_entry_indexed[k]]
+            #             ]
+            #         ))])
+            if k in ["r"]:
+                groups_for_k = [
+                    list(group)
+                    for _, group in it.groupby(
+                        sols_and_entries,
+                        key=lambda s_e: s_e[1][full_entry_indexed[k]],
+                    )
+                ]
+            if k in ["beta"]:
+                groups_for_k = [
+                    list(group)
+                    for _, group in it.groupby(
+                        sols_and_entries,
+                        key=lambda s_e: tuple(
+                            [
+                                s_e[1][i]
+                                for i in [
+                                    e
+                                    for e in full_entry_indexed.values()
+                                    if e != full_entry_indexed[k]
+                                ]
+                            ]
+                        ),
+                    )
+                ]
+
+            for i, group in enumerate(groups_for_k):
+                figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
+                axes[0].set_title(f"{model}: Population Change", fontsize=20)
+                axes[0].set_ylabel(r"$N$", rotation=90, fontsize=15)
+                axes[0].set_xlabel("t", fontsize=20)
+                axes[1].set_title(f"{model}: State Resources", fontsize=20)
+                axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
+                axes[1].set_xlabel("t", fontsize=20)
+                print([elt[1] for elt in group])
+                for elt in group:
+                    param_val = elt[1][full_entry_indexed[k]]
+                    # print(k, LABELS[k], param_val, full_entry_indexed[k], elt[1])
+                    sol = elt[0]
+                    N, S = sol.ys.T
+                    S = jnp.maximum(S, 0.0)
+                    timepoints = sol.ts
+                    axes[0].plot(
+                        timepoints.tolist(),
+                        N.tolist(),
+                        label=rf"{LABELS[k]}={round(param_val, 2)}",
+                    )
+                    axes[1].plot(
+                        timepoints.tolist(),
+                        S.tolist(),
+                        label=rf"{LABELS[k]}={round(param_val, 2)}",
+                    )
+                axes[0].legend()
+                axes[1].legend()
+                # these must come after plot()
+                axes[1].set_xlim(xmin=0)
+                axes[1].set_ylim(ymin=0)
+                axes[0].set_xlim(xmin=0)
+                axes[0].set_ylim(ymin=0)
+                plt.show()
 
 
 def main(args: argparse.Namespace) -> None:
