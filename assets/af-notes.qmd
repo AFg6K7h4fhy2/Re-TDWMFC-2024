@@ -1,0 +1,62 @@
+---
+title: Notes On 2024-TDWMFC-Wittmann
+author: AFg6K7h4fhy2
+bibliography: references.bib
+---
+
+Notes:
+
+* Entities with a "*" preceding them are covered in the glossary of this repository.
+* Definitions in this repository's glossary are not necessarily supported by the paper's authors.
+* Notes below include quotes, contentions, observations, questions, and comments.
+
+Contributions outlined in Abstract:
+
+* Updated version of the *Demographic-Fiscal Model (DFM).
+* *Nonlinear dynamics added to analysis of DFM.
+  * Application of *existence theory.
+  * Application of *numerical bifurcation analysis.
+  * Analysis of *equilibria and *Hopf bifurcations.
+
+Turchin's [@turchin2018historical, pp. 133] three stages of empire:
+
+> 1. Polity formation and ethnogenesis, accompanied by initial expansion within an ethnically similar substrate.
+1. Expansion to peak size, in the process acquiring a multiethnic character.
+2. Stagnation, decline, and collapse (perhaps followed by a revival, and another imperial cycle).
+
+Question:
+
+* What specifically, is polity formation and ethnogenesis consist of?
+* What specifically, is an ethnically similar substrate?
+*
+
+Summary of Khaldun's [@khaldun2015muqaddimah, pp. 355] ideological and economic theory of state collapse:
+
+> 1. Recently established states are moderate in expenditure and just in administration, resulting in light taxation.
+1. Under the circumstances (1), population numbers are rising.
+2. Prosperity leads to increased spending to maintain wealth.
+3. Higher wealth demands higher expenditures for state security and bureaucracy.
+4. Population numbers eventually reach a growth limit.
+5. Maintaining prosperity without population growth leads to higher taxation and exploitation of the residents.
+6. Higher taxation may ruin the economy and eventually leads to famines, rebellion or political unrest.
+
+Summary of Goldstone's [@goldstone2016revolution, pp. 24] theory of state collapse:
+
+> 1. Excessive population growth leads to inflation which may prevent or reduce tax revenues due to economic uncertainty.
+2. Increased population leads to expansion of armies and rising real costs.
+3. Increased population leads to rural misery, urban migration and famines.
+4. Increased population leads to expansion of youth cohorts, often impacted by lack of employment opportunities.
+5. Rising costs and low revenues lead to high taxation
+
+Summary of Olson's [@olson1963rapid] social-economic hybrid explanation:
+
+> 1. Economic growth increases the number of “nouveaux riches”.
+2. Economic growth also creates a large number of “nouveaux pauvres”.
+3. The “nouveaux riches” can use the gained power to change social and political order in their interest.
+4. The “noveaux pauvres” will be more resentful of their poverty than those who have known nothing else.
+5. Individuals gain economic power incompatible with their positions in the social and political order before.
+6. That new power can be used in their own interest to change the political or social order.
+
+Meaning of "nouveaux" is "New and different, often fashionably so." (see [here](https://www.wordnik.com/words/nouveau)) and meaning of "pauvres" is "poors" (see [here](https://dictionary.cambridge.org/dictionary/french-english/pauvre)).
+
+The sheer volume of grammatical errors reduces my faith that this paper was well-reviewed.
