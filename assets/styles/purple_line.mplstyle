@@ -20,5 +20,24 @@
 
 
 
-figure.figsize: 10, 5 # figure size in inches
+figure.figsize: 8, 6 # figure size in inches
 figure.dpi: 150 # figure dots per inch
+
+# enable LaTeX rendering for text
+text.usetex: True
+
+# line styles
+axes.linewidth: 1.0  # line width for axes
+lines.linewidth: 1.0  # line width for plot lines
+lines.marker: None  # no markers on the lines
+
+# font settings
+font.family: serif
+axes.labelsize: 15  # size of axis labels
+axes.titlesize: 20  # size of axis titles
+xtick.labelsize: 12  # size of x-axis tick labels
+ytick.labelsize: 12  # size of y-axis tick labels
+legend.fontsize: 12  # size of legend text
+
+# tight layout
+figure.autolayout: True
