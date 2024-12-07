@@ -1,0 +1,58 @@
+The link for the description of JAX types.
+
+https://jax.readthedocs.io/en/latest/jep/12049-type-annotations.html
+
+Typing in JAX
+
+"When annotating JAX arrays in public API functions, we recommend using ArrayLike for array inputs, and Array for array outputs."
+https://jax.readthedocs.io/en/latest/jax.typing.html
+
+The poetry pyproject toml options can be found here:
+
+https://python-poetry.org/docs/pyproject/
+
+The Python pyproject toml options can be found here:
+
+https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+
+The Open Source guide
+
+https://opensource.guide/
+
+The TOML file originally had:
+
+[model]
+t0 = 0
+t1 = 500
+dt0 = 1
+
+[variables]
+init_N = 0.5
+init_S = 0.0
+
+[parameters]
+init_p = 1
+init_s = 10
+init_k = 1
+max_k = 4
+c = 3
+r = 0.02
+beta = 0.4
+
+but was changed to
+
+t0 = 0
+t1 = 500
+dt0 = 1
+init_N = 0.5
+init_S = 0.0
+init_p = 1
+init_s = 10
+init_k = 1
+max_k = 4
+c = 3
+r = 0.02
+beta = 0.4
+
+since plainly it was much easier to verify
+that the config was valid.
