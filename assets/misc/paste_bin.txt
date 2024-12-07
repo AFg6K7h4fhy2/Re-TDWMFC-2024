@@ -1,0 +1,38 @@
+groups_for_k = ""
+            groups_for_k_03 = [
+                list(group)
+                for _, group in it.groupby(
+                    sols_and_entries,
+                    key=lambda s_e: s_e[1][full_entry_indices[k]] in config[k],
+                )
+            ]
+            print(len(groups_for_k_03))
+            groups_for_k_01 = [
+                list(group)
+                for _, group in it.groupby(
+                    sols_and_entries,
+                    key=lambda s_e: s_e[1][full_entry_indices[k]],
+                )
+            ]
+            print(len(groups_for_k_01))
+            groups_for_k_02 = [
+                list(group)
+                for _, group in it.groupby(
+                    sols_and_entries,
+                    key=lambda s_e: tuple(
+                        [
+                            s_e[1][i]
+                            for i in [
+                                e
+                                for e in full_entry_indices.values()
+                                if e != full_entry_indices[k]
+                            ]
+                        ]
+                    ),
+                )
+            ]
+            print(len(groups_for_k_02))
+            if len(groups_for_k_01) == exact_group_count:
+                groups_for_k = groups_for_k_01
+            if len(groups_for_k_02) == exact_group_count:
+                groups_for_k = groups_for_k_02

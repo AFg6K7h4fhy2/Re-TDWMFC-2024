@@ -299,46 +299,26 @@ def plot_and_save_to_pdf(  #
             # entry (e.g. beta); this is get
             # 1 group for each r, should be
             # two
-            exact_group_count = len(sols) / len_each_key[k]
-            print(k, exact_group_count)
-            groups_for_k = ""
-            groups_for_k_03 = [
+            # exact_group_count = len(sols) / len_each_key[k]
+            exclude_index = full_entry_indices[k]
+            # NEED to sort groups before it.groupby!!!
+            sorted_group_data = sorted(
+                sols_and_entries,
+                key=lambda s_e: tuple(
+                    s_e[1][i] for i in range(len(s_e[1])) if i != exclude_index
+                ),
+            )
+            groups_for_k = [
                 list(group)
                 for _, group in it.groupby(
-                    sols_and_entries,
-                    key=lambda s_e: s_e[1][full_entry_indices[k]] in config[k],
-                )
-            ]
-            print(len(groups_for_k_03))
-            groups_for_k_01 = [
-                list(group)
-                for _, group in it.groupby(
-                    sols_and_entries,
-                    key=lambda s_e: s_e[1][full_entry_indices[k]],
-                )
-            ]
-            print(len(groups_for_k_01))
-            groups_for_k_02 = [
-                list(group)
-                for _, group in it.groupby(
-                    sols_and_entries,
+                    sorted_group_data,
                     key=lambda s_e: tuple(
-                        [
-                            s_e[1][i]
-                            for i in [
-                                e
-                                for e in full_entry_indices.values()
-                                if e != full_entry_indices[k]
-                            ]
-                        ]
+                        s_e[1][i]
+                        for i in range(len(s_e[1]))
+                        if i != exclude_index
                     ),
                 )
             ]
-            print(len(groups_for_k_02))
-            if len(groups_for_k_01) == exact_group_count:
-                groups_for_k = groups_for_k_01
-            if len(groups_for_k_02) == exact_group_count:
-                groups_for_k = groups_for_k_02
             for i, group in enumerate(groups_for_k):
                 figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
                 axes[0].set_title(f"{model}: Population Change", fontsize=20)
