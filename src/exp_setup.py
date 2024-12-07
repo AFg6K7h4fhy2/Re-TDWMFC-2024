@@ -284,7 +284,7 @@ def plot_and_save_to_pdf(  #
         k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS
     }
     full_var_params = ["init_N", "init_S"] + list(input_dict.keys())
-    full_entry_indexed = {
+    full_entry_indices = {
         k: i
         for i, k in zip(
             list(range(2 + len(list(input_dict.keys())))), full_var_params
@@ -293,46 +293,52 @@ def plot_and_save_to_pdf(  #
     sols_and_entries = list(zip(sols, entries))
     # group by all indices but that which
     # you are considering for plotting
-    for k, v in full_entry_indexed.items():
+    for k, v in full_entry_indices.items():
         if len_each_key[k] > 1:
             # the groups for a particular
             # entry (e.g. beta); this is get
             # 1 group for each r, should be
             # two
-            # print([e for e in full_entry_indexed.values() if e != full_entry_indexed[k]])
-            # print([elt[1] for elt in sorted(sols_and_entries,
-            #         key=lambda s_e: tuple(
-            #             [
-            #                 s_e[1][i]
-            #                 for i in [e for e in full_entry_indexed.values() if e != full_entry_indexed[k]]
-            #             ]
-            #         ))])
-            if k in ["r"]:
-                groups_for_k = [
-                    list(group)
-                    for _, group in it.groupby(
-                        sols_and_entries,
-                        key=lambda s_e: s_e[1][full_entry_indexed[k]],
-                    )
-                ]
-            if k in ["beta"]:
-                groups_for_k = [
-                    list(group)
-                    for _, group in it.groupby(
-                        sols_and_entries,
-                        key=lambda s_e: tuple(
-                            [
-                                s_e[1][i]
-                                for i in [
-                                    e
-                                    for e in full_entry_indexed.values()
-                                    if e != full_entry_indexed[k]
-                                ]
+            exact_group_count = len(sols) / len_each_key[k]
+            print(k, exact_group_count)
+            groups_for_k = ""
+            groups_for_k_03 = [
+                list(group)
+                for _, group in it.groupby(
+                    sols_and_entries,
+                    key=lambda s_e: s_e[1][full_entry_indices[k]] in config[k],
+                )
+            ]
+            print(len(groups_for_k_03))
+            groups_for_k_01 = [
+                list(group)
+                for _, group in it.groupby(
+                    sols_and_entries,
+                    key=lambda s_e: s_e[1][full_entry_indices[k]],
+                )
+            ]
+            print(len(groups_for_k_01))
+            groups_for_k_02 = [
+                list(group)
+                for _, group in it.groupby(
+                    sols_and_entries,
+                    key=lambda s_e: tuple(
+                        [
+                            s_e[1][i]
+                            for i in [
+                                e
+                                for e in full_entry_indices.values()
+                                if e != full_entry_indices[k]
                             ]
-                        ),
-                    )
-                ]
-
+                        ]
+                    ),
+                )
+            ]
+            print(len(groups_for_k_02))
+            if len(groups_for_k_01) == exact_group_count:
+                groups_for_k = groups_for_k_01
+            if len(groups_for_k_02) == exact_group_count:
+                groups_for_k = groups_for_k_02
             for i, group in enumerate(groups_for_k):
                 figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
                 axes[0].set_title(f"{model}: Population Change", fontsize=20)
@@ -341,10 +347,9 @@ def plot_and_save_to_pdf(  #
                 axes[1].set_title(f"{model}: State Resources", fontsize=20)
                 axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
                 axes[1].set_xlabel("t", fontsize=20)
-                print([elt[1] for elt in group])
                 for elt in group:
-                    param_val = elt[1][full_entry_indexed[k]]
-                    # print(k, LABELS[k], param_val, full_entry_indexed[k], elt[1])
+                    param_val = elt[1][full_entry_indices[k]]
+                    # print(k, LABELS[k], param_val, full_entry_indices[k], elt[1])
                     sol = elt[0]
                     N, S = sol.ys.T
                     S = jnp.maximum(S, 0.0)
