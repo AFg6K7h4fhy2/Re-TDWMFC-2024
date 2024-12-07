@@ -4,11 +4,16 @@ Demographic Fiscal Model (DFM) or Demographic
 Wealth Model (DWM) by reading in variable and
 parameter values from configuration files.
 This script must be ran from within the
-folder `src`. To run:
+folder `src`.
 
+To run w/ normal plots:
 python3 exp_setup.py --DFM --config "fig_01.toml"
 
+To run w/ custom style:
 python3 exp_setup.py --DFM --config "fig_01.toml" --style "multi_param"
+
+To run w/ custom style and param boxes:
+python3 exp_setup.py --DWM --config "fig_01.toml" --style "multi_param" --param_box
 """
 
 import argparse
@@ -27,8 +32,6 @@ from jax.typing import ArrayLike
 
 from models import DFM, DWM
 
-plt.rcParams["text.usetex"] = True
-
 CONFIG_SPECS = ["t0", "t1", "dt0"]
 CONFIG_VARS = ["init_N", "init_S"]
 CONFIG_PARAMS = [  # both DFM and DWM params
@@ -39,6 +42,9 @@ CONFIG_PARAMS = [  # both DFM and DWM params
     "c",
     "r",
     "beta",
+    "alpha",
+    "d",
+    "g",
 ]
 CONFIG_ENTRIES = CONFIG_SPECS + CONFIG_VARS + CONFIG_PARAMS
 NON_LISTLIKE_KEYS = CONFIG_SPECS
@@ -52,6 +58,9 @@ LABELS = {  # both DFM and DWM params
     "c": r"$c$",
     "r": r"$r$",
     "beta": r"$\beta$",
+    "alpha": r"$\alpha$",
+    "g": r"$g$",
+    "d": r"$d$",
 }
 
 
@@ -178,7 +187,9 @@ def load_and_validate_config(
 
 def run_model(
     config: dict[str, float | int | list[int] | list[float]], model: str
-) -> tuple[list[jax.Array], list[jax.Array], list[jax.Array]]:
+) -> tuple[
+    list[jax.Array], list[list[float]], dict[str, list[float] | list[int]]
+]:
     """
     Run a single cliodynamics model (DFM or
     DWM) using a combination of variables and
@@ -201,7 +212,7 @@ def run_model(
 
     Returns
     -------
-    tuple[list[jax.Array], list[tuple[int, int, list[int | float], list[int | float]]]
+    tuple[list[jax.Array], list[list[float]],  dict[str, list[float] | list[int]]]
         The solutions, arguments, and initial
         variables for the experiments desired.
     """
@@ -256,20 +267,23 @@ def run_model(
     return (sols, entries, input_dict)
 
 
-def plot_and_save_to_pdf(  #
+def plot_and_save_to_pdf(
     model: str,
     sols: list[ArrayLike],
-    entries: tuple[int, int, list[int | float], list[int | float]],
-    input_dict,
+    entries: list[list[float]],
+    input_dict: dict[str, list[float] | list[int]],
     config: dict[str, float | int | list[int] | list[float]],
     to_save_as_pdf: bool,
-    save_name: str,
+    to_save_as_img: bool,
+    overwrite: bool,
+    param_box: bool,
+    save_path: str,
     style: str,
 ) -> None:
     # use grayscale for plotting, if
     # no style is provided
+    base_style_path = pathlib.Path("../assets/styles")
     if style != "default":
-        base_style_path = pathlib.Path("../assets/styles")
         style_path = base_style_path / (style + ".mplstyle")
         if style_path.exists():
             plt.style.use(str(style_path))
@@ -278,30 +292,31 @@ def plot_and_save_to_pdf(  #
             raise FileNotFoundError(f"Style file {style}.mplstyle not found.")
     else:
         plt.style.use("grayscale")
-    # get number of elts associated with
-    # each value or parameter
+    # associate the correctly ordered variables
+    # and parameters with indices
     len_each_key = {
         k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS
     }
-    full_var_params = ["init_N", "init_S"] + list(input_dict.keys())
-    full_entry_indices = {
-        k: i
-        for i, k in zip(
-            list(range(2 + len(list(input_dict.keys())))), full_var_params
-        )
+    full_var_params = CONFIG_VARS + list(input_dict.keys())
+    full_var_params_indices = list(range(len(full_var_params)))
+    var_param_by_index = {
+        k: i for i, k in zip(full_var_params_indices, full_var_params)
     }
     sols_and_entries = list(zip(sols, entries))
-    # group by all indices but that which
-    # you are considering for plotting
-    for k, v in full_entry_indices.items():
+
+    # set up PDF saving:
+    # save_path =
+    # with PdfPages('output.pdf') as pdf:
+    # plot by groups of variables and parameters
+    for k, v in var_param_by_index.items():
+        # variables or parameters of length
+        # one are taken into account below
         if len_each_key[k] > 1:
-            # the groups for a particular
-            # entry (e.g. beta); this is get
-            # 1 group for each r, should be
-            # two
-            # exact_group_count = len(sols) / len_each_key[k]
-            exclude_index = full_entry_indices[k]
-            # NEED to sort groups before it.groupby!!!
+            exclude_index = var_param_by_index[k]
+            # NEED to sort groups before
+            # it.groupby!!!; remember
+            # s_e[1][i] gets the ith entry of
+            # y0.tolist() + arg.tolist()
             sorted_group_data = sorted(
                 sols_and_entries,
                 key=lambda s_e: tuple(
@@ -328,12 +343,11 @@ def plot_and_save_to_pdf(  #
                 axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
                 axes[1].set_xlabel("t", fontsize=20)
                 for elt in group:
-                    param_val = elt[1][full_entry_indices[k]]
-                    # print(k, LABELS[k], param_val, full_entry_indices[k], elt[1])
                     sol = elt[0]
                     N, S = sol.ys.T
                     S = jnp.maximum(S, 0.0)
                     timepoints = sol.ts
+                    param_val = elt[1][var_param_by_index[k]]
                     axes[0].plot(
                         timepoints.tolist(),
                         N.tolist(),
@@ -344,9 +358,33 @@ def plot_and_save_to_pdf(  #
                         S.tolist(),
                         label=rf"{LABELS[k]}={round(param_val, 2)}",
                     )
+
+                if param_box:
+                    figure.subplots_adjust(bottom=0.5)
+                    param_list = "; ".join(
+                        [
+                            f"{LABELS[_]}={', '.join([str(round(e, 2)) for e in config[_]])}"
+                            for _ in full_var_params
+                            if _ != k
+                        ]
+                    )
+                    figure.text(
+                        0.5,  # center
+                        0.02,  # near bottom
+                        f"Parameters: {param_list}",
+                        ha="center",
+                        va="top",
+                        fontsize=12,
+                        bbox=dict(
+                            facecolor="white",
+                            edgecolor="black",
+                            boxstyle="round,pad=0.5",
+                        ),
+                    )
                 axes[0].legend()
                 axes[1].legend()
-                # these must come after plot()
+                # limit setting must come
+                # after axes.plot()
                 axes[1].set_xlim(xmin=0)
                 axes[1].set_ylim(ymin=0)
                 axes[0].set_xlim(xmin=0)
@@ -378,10 +416,12 @@ def main(args: argparse.Namespace) -> None:
         input_dict=input_dict,
         config=config,
         to_save_as_pdf=args.save_as_pdf,
-        save_name=args.save_name,
+        to_save_as_img=args.save_as_img,
+        overwrite=args.overwrite,
+        param_box=args.param_box,
+        save_path=args.save_path,
         style=args.style,
     )
-    # print(config, model_name)
 
 
 if __name__ == "__main__":
@@ -414,13 +454,34 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save_as_pdf",
         action="store_true",
-        help="(optional) Whether to save plots that were generated.",
+        help="(optional) Whether to save plots that were generated as PDFs.",
+    )
+    parser.add_argument(
+        "--save_as_img",
+        action="store_true",
+        help="(optional) Whether to save plots that were generated as images.",
     )
     parser.add_argument(
         "--save_name",
         type=str,
-        default="default_figure_name",
-        help="(optional) The name of the plot to save.",
+        default="default_name",
+        help="The save name for the PDF of figures",
+    )
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        default="../assets/images",
+        help="Where to save figures.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Whether to overwrite existing saved figures.",
+    )
+    parser.add_argument(
+        "--param_box",
+        action="store_true",
+        help="Whether to have the parameters and variables in a box in the figures.",
     )
     args = parser.parse_args()
     # check that one but not both models
