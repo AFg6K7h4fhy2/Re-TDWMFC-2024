@@ -5,16 +5,11 @@ Wealth Model (DWM) by reading in variable and
 parameter values from configuration files.
 The purpose of this file is to permit easy
 visualization capabilities for different
-combinations of parameters.
+combinations of parameters. These files
+are meant to be run from within `./src`.
 
 To run w/ normal plots:
-python3 exp_setup.py --DFM --config "fig_01.toml"
-
-To run w/ custom style:
-python3 exp_setup.py --DFM --config "fig_01.toml" --style "multi_param" --param_box
-
-To run w/ custom style and param boxes:
-python3 exp_setup.py --DWM --config "fig_01.toml" --style "multi_param" --param_box
+python3 exp_setup.py --config "fig_01.toml"
 """
 
 import argparse
@@ -22,15 +17,16 @@ import itertools as it
 import pathlib
 import time
 from collections.abc import Sequence
-from typing import Any, Callable
+from typing import Any
 
 import diffrax
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import toml
-from jax.typing import ArrayLike
-from models import DFM, DWM
+
+from DFM import DFM
+from DWM import DWM
 
 # parameters for model running that ought
 # never to have multiple values defined
@@ -44,50 +40,36 @@ CONFIG_VARS = ["init_N", "init_S"]
 
 # currently supported models
 SUPPORTED_MODELS = ["DFM", "DWM"]
+MODELS = {"DFM": DFM, "DWM": DWM}
 
 # additional models can be added here
 CONFIG_PARAMS = {
     # the parameters that the DFM model needs
-    # and or accepts
+    # and or accepts; the order must match
+    # that in the DFM function i.e.
+    # r, init_rho, beta, init_k, c, init_s = args
     "DFM": [
-        "init_s",  # initial state resources
-        "init_k",  # initial carrying capacity
-        "init_rho",  # taxation rate
-        "max_k",  # maximum carrying capacity
-        "c",  # max_k - init_k
         "r",  # population growth rate
+        "init_rho",  # taxation rate
         "beta",  # expenditure rate
+        "init_k",  # initial carrying capacity
+        "c",  # max_k - init_k
+        "init_s",  # initial state resources
     ],
     # the parameters that the DFM model needs
-    # and or accepts
+    # and or accepts; the order must match
+    # that in the DWM function i.e.
+    # r, beta, alpha, d, g, c, init_k = args
     "DWM": [
-        "init_k",  # initial carrying capacity
-        "init_rho",  # taxation rate
-        "max_k",  # maximum carrying capacity
-        "c",  # max_k - init_k
         "r",  # population growth rate
         "beta",  # expenditure rate
         "alpha",  # ?
         "d",  # strength of negative feedback from S to N
         "g",  # tax rate times the fraction of surplus gained through investing/expanding
+        "c",  # max_k - init_k
+        "init_k",  # initial carrying capacity
     ],
 }
-
-CONFIG_PARAMS = [
-    "init_s",
-    "init_k",
-    "max_k",
-    "c",
-    "r",
-    "beta",
-    "alpha",
-    "d",
-    "g",
-]
-CONFIG_ENTRIES = CONFIG_SPECS + CONFIG_VARS + CONFIG_PARAMS
-NON_LISTLIKE_KEYS = CONFIG_SPECS
-
-CONFIG_ITEMS_ALL = CONFIG_SPECS + CONFIG_VARS
 
 # the LaTeX labels for different variables
 # and parameters used across the DWM and DFM
@@ -213,7 +195,7 @@ def load_and_validate_config(
         )
     missing_model_vals = [
         val
-        for val in CONFIG_PARAMS[model_specified]
+        for val in CONFIG_SPECS + CONFIG_VARS + CONFIG_PARAMS[model_specified]
         if val not in loaded_entries
     ]
     if missing_model_vals:
@@ -242,29 +224,56 @@ def load_and_validate_config(
     # check_values_interval(
     #     values=config["beta"], min_value=0.00, max_value=0.90
     # )
-    max_init_k = max(config["init_k"])
-    min_max_k = min(config["max_k"])
-    if max_init_k >= min_max_k:
-        raise ValueError(
-            f"Minimum max carry capacity (got {min_max_k}) must be greater than initial carry capacity (got {max_init_k})."
-        )
+    # max_init_k = max(config["init_k"])
+    # min_max_k = min(config["max_k"])
+    # if max_init_k >= min_max_k:
+    #     raise ValueError(
+    #         f"Minimum max carry capacity (got {min_max_k}) must be greater than initial carry capacity (got {max_init_k})."
+    #     )
     return config
+
+
+def get_y0s(
+    init_N: list[float] | list[int], init_S: list[float] | list[int]
+) -> list[jax.Array]:
+    """
+    TODO:
+    """
+    y0s = [jnp.array(pair) for pair in list(it.product(init_N, init_S))]
+    return y0s
+
+
+def get_args(
+    model_input: dict[str, list[int] | list[float]]
+) -> list[jax.Array]:
+    """
+    TODO:
+    """
+    args = [
+        jnp.array(group)
+        for group in list(
+            it.product(
+                *list(model_input.values()),
+            )
+        )
+    ]
+    return args
 
 
 def run_clio_model(
     t0: int,
     t1: int,
-    dt0: float,
-    model: Callable,
-    y0s: list[ArrayLike],
-    args: list[ArrayLike],
-):
+    dt0: int,
+    model_name: str,
+    y0s: list[jax.Array],
+    args: list[jax.Array],
+) -> list[jax.Array]:
     """
     Run a single cliodynamics model.
     """
     saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
     solver = diffrax.Tsit5()
-    term = diffrax.ODETerm(model)
+    term = diffrax.ODETerm(MODELS[model_name])
     sols = [
         diffrax.diffeqsolve(
             term, solver, t0, t1, dt0, y0, args=arg, saveat=saveat
@@ -275,137 +284,97 @@ def run_clio_model(
     return sols
 
 
-def run_model(
-    config: dict[str, float | int | list[int] | list[float]], model: str
-) -> tuple[
-    list[jax.Array], list[list[float]], dict[str, list[float] | list[int]]
-]:
+def plot_and_save(
+    model_name: str,
+    config: dict[str, str | float | int | list[int] | list[float]],
+    y0s: list[jax.Array],
+    args: list[jax.Array],
+    sols: list[jax.Array],
+    model_input: dict[str, list[float] | list[int]],
+    overwrite: bool = False,
+    param_box: bool = False,
+    style: str = None,
+) -> None:
     """
-    Run a single cliodynamics model using
-    the configured variables and parameters.
+    Plots and saves executed cliodynamics
+    model results. If there are multiple
+    plots, they're saved as a PDF; otherwise,
+    they're saved as an image. The file name
+    included the model name, the configuration
+    file, and the date as (ISO 8601). The PDF
+    or image file metadata contains the
+    Python code and toml file contents for the
+    images produced therein. Overwrite defaults
+    to False. Parameter box defaults to False.
 
     Parameters
     ----------
-    config : dict[str, str | float | int | list[int] | list[float]]
-        A dictionary of model specifications,
-        parameters, and variables. The
-        following parameters and variables
-        are permitted to be lists: init_N,
-        init_S, init_rho, init_s, init_k,
-        max_k, c, r, beta.
+    model_name : str
+        The name of the model used. Usually is
+        either DFM or DWM.
+    y0s : list[jax.Array]
+        The initial variable values for
+        the model.
+    args : list[jax.Array]
+        Different combinations of parameters
+        for the specified model.
+    sols : list[jax.Array]
+        A list of ODE solutions corresponding
+        to different combinations of variables
+        and parameters of the specified model.
+    model_input : dict[str, list[float] | list[int]]
+        Parameters and their values for the
+        specified model.
+    overwrite : bool
+        Whether to overwrite a saved output
+        file. Defaults to False.
+    param_box : bool
+        Whether to use a parameter box showing
+        the values of parameters used in the
+        model.
+    style : str
+        The name of the style file to use for
+        plotting. Defaults to None, i.e.
+        matplotlib's default style.
 
     Returns
     -------
-    tuple[list[jax.Array], list[list[float]],  dict[str, list[float] | list[int]]]
-        The solutions, arguments, and initial
-        variables for the experiments desired.
+    None
+        A PDF or image of the figures produced.
     """
-    # get model times from config
-    t0 = config["t0"]
-    t1 = config["t1"]
-    dt0 = config["dt0"]
-    saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
-    # choose solver
-    # TODO: justify solver choice
-    solver = diffrax.Tsit5()
-    # get appropriate model and args
-    if model == "DFM":
-        term = diffrax.ODETerm(DFM)
-        input_dict = {
-            k: config[k]
-            for k in ["r", "init_rho", "beta", "init_k", "c", "init_s"]
-        }
-    if model == "DWM":
-        term = diffrax.ODETerm(DWM)
-        input_dict = {
-            k: config[k]
-            for k in [
-                "r",
-                "init_rho",
-                "beta",
-                "alpha",
-                "d",
-                "g",
-                "c",
-                "init_k",
-            ]
-        }
-    # get combinations of parameters, group
-    # by each parameter
-    y0s = [
-        jnp.array(pair)
-        for pair in list(it.product(config["init_N"], config["init_S"]))
-    ]
-    args = [
-        jnp.array(group)
-        for group in list(
-            it.product(
-                *list(input_dict.values()),
-            )
-        )
-    ]
-    # get model solutions
-    sols = [
-        diffrax.diffeqsolve(
-            term, solver, t0, t1, dt0, y0, args=arg, saveat=saveat
-        )
-        for y0 in y0s
-        for arg in args
-    ]
-    entries = [
-        y0.tolist() + arg.tolist()
-        for i, y0 in enumerate(y0s)
-        for j, arg in enumerate(args)
-    ]
-    return (sols, entries, input_dict)
-
-
-def plot_and_save_to_pdf(
-    model: str,
-    sols: list[ArrayLike],
-    entries: list[list[float]],
-    input_dict: dict[str, list[float] | list[int]],
-    config: dict[str, float | int | list[int] | list[float]],
-    to_save_as_pdf: bool,
-    to_save_as_img: bool,
-    overwrite: bool,
-    param_box: bool,
-    save_path: str,
-    style: str,
-) -> None:
-    # use grayscale for plotting, if
-    # no style is provided
+    # again, assuming the code is being run
+    # from within ./src
     base_style_path = pathlib.Path("../assets/styles")
-    if style != "default":
+    if style is not None:
         style_path = base_style_path / (style + ".mplstyle")
         if style_path.exists():
             plt.style.use(str(style_path))
             print(f"Loaded style: {style}.")
         else:
             raise FileNotFoundError(f"Style file {style}.mplstyle not found.")
-    else:
-        plt.style.use("grayscale")
     # associate the correctly ordered variables
     # and parameters with indices
-    len_each_key = {
-        k: len(v) for k, v in config.items() if k not in NON_LISTLIKE_KEYS
+    model_vars_and_params = CONFIG_VARS + CONFIG_PARAMS[model_name]
+    len_model_vars_and_params = {
+        k: len(config[k]) for k in model_vars_and_params
     }
-    full_var_params = CONFIG_VARS + list(input_dict.keys())
-    full_var_params_indices = list(range(len(full_var_params)))
-    var_param_by_index = {
-        k: i for i, k in zip(full_var_params_indices, full_var_params)
+    model_vars_and_params_indices = list(range(len(model_vars_and_params)))
+    model_vars_and_params_w_indices = {
+        k: i
+        for i, k in zip(model_vars_and_params_indices, model_vars_and_params)
     }
+    entries = [
+        y0.tolist() + arg.tolist()
+        for i, y0 in enumerate(y0s)
+        for j, arg in enumerate(args)
+    ]
     sols_and_entries = list(zip(sols, entries))
-
-    # set up PDF saving:
-    # save_path =
-    # with PdfPages('output.pdf') as pdf:
     # plot by groups of variables and parameters
-    for k, v in var_param_by_index.items():
+    for k, v in model_vars_and_params_w_indices.items():
         # variables or parameters of length
         # one are taken into account below
-        if len_each_key[k] > 1:
-            exclude_index = var_param_by_index[k]
+        if len_model_vars_and_params[k] > 1:
+            exclude_index = model_vars_and_params_w_indices[k]
             # NEED to sort groups before
             # it.groupby!!!; remember
             # s_e[1][i] gets the ith entry of
@@ -429,18 +398,22 @@ def plot_and_save_to_pdf(
             ]
             for i, group in enumerate(groups_for_k):
                 figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-                axes[0].set_title(f"{model}: Population Change", fontsize=20)
+                axes[0].set_title(
+                    f"{model_name}: Population Change", fontsize=20
+                )
                 axes[0].set_ylabel(r"$N$", rotation=90, fontsize=15)
                 axes[0].set_xlabel("t", fontsize=20)
-                axes[1].set_title(f"{model}: State Resources", fontsize=20)
+                axes[1].set_title(
+                    f"{model_name}: State Resources", fontsize=20
+                )
                 axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
                 axes[1].set_xlabel("t", fontsize=20)
                 for elt in group:
                     sol = elt[0]
                     N, S = sol.ys.T
-                    # S = jnp.maximum(S, 0.0)
+                    S = jnp.maximum(S, 0.0)
                     timepoints = sol.ts
-                    param_val = elt[1][var_param_by_index[k]]
+                    param_val = elt[1][model_vars_and_params_w_indices[k]]
                     axes[0].plot(
                         timepoints.tolist(),
                         N.tolist(),
@@ -457,7 +430,7 @@ def plot_and_save_to_pdf(
                     param_list = "; ".join(
                         [
                             f"{LABELS[_]}={', '.join([str(round(e, 2)) for e in config[_]])}"
-                            for _ in full_var_params
+                            for _ in model_vars_and_params
                             if _ != k
                         ]
                     )
@@ -485,35 +458,47 @@ def plot_and_save_to_pdf(
                 plt.show()
 
 
-def main(args: argparse.Namespace) -> None:
+def main(parsed_args: argparse.Namespace) -> None:
 
     # get configuration file
-    config = load_and_validate_config(config_file=args.config)
+    config = load_and_validate_config(config_file=parsed_args.config)
 
-    # get model name
-    model_name = "DFM" if args.DFM else "DWM"
+    # model specified
+    model_selected = config["model"]
 
-    # get model results
+    # get model variable and parameter
+    # input dictionary
+    model_input_dict = {k: config[k] for k in CONFIG_PARAMS[model_selected]}
+
+    # gets y0s and args for model
+    y0s = get_y0s(init_N=config["init_N"], init_S=config["init_S"])
+    input_args = get_args(model_input=model_input_dict)
+
+    # run model combinations, getting the
+    # time as well
     start = time.time()
-    sols, entries, input_dict = run_model(config=config, model=model_name)
+    sols = run_clio_model(
+        t0=config["t0"],
+        t1=config["t1"],
+        dt0=config["dt0"],
+        model_name=model_selected,
+        y0s=y0s,
+        args=input_args,
+    )
     elapsed = time.time() - start
     print(
-        f"Experiments Using {model_name} Ran In:\n{round(elapsed, 5)} Seconds.\n"
+        f"Experiments Using {model_selected} Ran In:\n{round(elapsed, 5)} Seconds.\n"
     )
 
-    # plot and (possibly) save
-    plot_and_save_to_pdf(
-        model=model_name,
-        sols=sols,
-        entries=entries,
-        input_dict=input_dict,
+    # plot output
+    plot_and_save(
+        model_name=model_selected,
         config=config,
-        to_save_as_pdf=args.save_as_pdf,
-        to_save_as_img=args.save_as_img,
-        overwrite=args.overwrite,
-        param_box=args.param_box,
-        save_path=args.save_path,
-        style=args.style,
+        y0s=y0s,
+        args=input_args,
+        sols=sols,
+        model_input=model_input_dict,
+        style="general_AF",
     )
 
 
@@ -528,44 +513,44 @@ if __name__ == "__main__":
         required=True,
         help="The name of the configuration file to use.",
     )
-    parser.add_argument(
-        "--style",
-        type=str,
-        default="default",
-        help="(optional) The name of the style file to use.",
-    )
-    parser.add_argument(
-        "--save_as_pdf",
-        action="store_true",
-        help="(optional) Whether to save plots that were generated as PDFs.",
-    )
-    parser.add_argument(
-        "--save_as_img",
-        action="store_true",
-        help="(optional) Whether to save plots that were generated as images.",
-    )
-    parser.add_argument(
-        "--save_name",
-        type=str,
-        default="default_name",
-        help="The save name for the PDF of figures",
-    )
-    parser.add_argument(
-        "--save_path",
-        type=str,
-        default="../assets/images",
-        help="Where to save figures.",
-    )
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Whether to overwrite existing saved figures.",
-    )
-    parser.add_argument(
-        "--param_box",
-        action="store_true",
-        help="Whether to have the parameters and variables in a box in the figures.",
-    )
-    args = parser.parse_args()
+    # parser.add_argument(
+    #     "--style",
+    #     type=str,
+    #     default="default",
+    #     help="(optional) The name of the style file to use.",
+    # )
+    # parser.add_argument(
+    #     "--save_as_pdf",
+    #     action="store_true",
+    #     help="(optional) Whether to save plots that were generated as PDFs.",
+    # )
+    # parser.add_argument(
+    #     "--save_as_img",
+    #     action="store_true",
+    #     help="(optional) Whether to save plots that were generated as images.",
+    # )
+    # parser.add_argument(
+    #     "--save_name",
+    #     type=str,
+    #     default="default_name",
+    #     help="The save name for the PDF of figures",
+    # )
+    # parser.add_argument(
+    #     "--save_path",
+    #     type=str,
+    #     default="../assets/images",
+    #     help="Where to save figures.",
+    # )
+    # parser.add_argument(
+    #     "--overwrite",
+    #     action="store_true",
+    #     help="Whether to overwrite existing saved figures.",
+    # )
+    # parser.add_argument(
+    #     "--param_box",
+    #     action="store_true",
+    #     help="Whether to have the parameters and variables in a box in the figures.",
+    # )
+    parsed_args = parser.parse_args()
     # pass args to main and execute model
-    main(args)
+    main(parsed_args)

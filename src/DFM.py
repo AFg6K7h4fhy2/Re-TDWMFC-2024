@@ -77,11 +77,11 @@ def DFM(
     # capacity, carrying capacity increase
     # capacity from state resources,
     # initial state resources
-    r, init_p, beta, init_k, c, init_s = args
+    r, init_rho, beta, init_k, c, init_s = args
     dN = r * N * (1 - (N / k(S, init_k, c, init_s)))
     dS = jnp.where(
         S > 0.0,
-        (init_p * N * (1 - (N / k(S, init_k, c, init_s)))) - (beta * N),
+        (init_rho * N * (1 - (N / k(S, init_k, c, init_s)))) - (beta * N),
         0.0,
     )
     return jnp.array([dN, dS])
