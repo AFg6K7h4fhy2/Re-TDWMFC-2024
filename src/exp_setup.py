@@ -369,6 +369,17 @@ def plot_and_save(
         for j, arg in enumerate(args)
     ]
     sols_and_entries = list(zip(sols, entries))
+
+    # TODO: plot N or S as func of another variable
+    # TODO: if all vars are len (1) plot differently
+    # TODO: fix param box
+    # TODO: save metadata (do later)
+    # TODO: have save path working
+    # TODO: save multiple figures to PDF
+    # TODO: save single figure to images
+    # TODO: save image w/ particular file name
+    # TODO: an additional function for actually making the figure
+
     # plot by groups of variables and parameters
     for k, v in model_vars_and_params_w_indices.items():
         # variables or parameters of length
