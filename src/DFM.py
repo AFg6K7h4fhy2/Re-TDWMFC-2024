@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jax.typing import ArrayLike
 
 
-def k(S: float, init_k: int, c: int, init_s: float) -> float:
+def k(S: float, init_k: int, c: int, init_s: int) -> float:
     """
     A state's carrying capacity as used in
     the DFM. Determined in part by the
@@ -39,9 +39,7 @@ def k(S: float, init_k: int, c: int, init_s: float) -> float:
     return init_k + (c * (S / (init_s + S)))
 
 
-def DFM(
-    t: int, y: ArrayLike, args: tuple[float, float, float, int, int, float]
-) -> jax.Array:
+def DFM(t: int, y: ArrayLike, args: ArrayLike) -> jax.Array:
     """
     The Demographic Fiscal Model (DFM), which
     models a state's population and
@@ -60,7 +58,7 @@ def DFM(
     y : ArrayLike
         The current population and accumulated
         state resources.
-    args : tuple[float, float, float, float, float, float]
+    args : ArrayLike
         The variables and parameters of the
         ODE system.
 

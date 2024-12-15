@@ -41,7 +41,7 @@ def k(S: float, init_k: int, c: int) -> float:
 def DWM(
     t: int,
     y: ArrayLike,
-    args: tuple[float, float, float, float, float, float, float],
+    args: ArrayLike,
 ) -> jax.Array:
     """
     The Demographic Wealth Model (DWM), which
@@ -63,7 +63,7 @@ def DWM(
     y : ArrayLike
         The current population and accumulated
         state wealth.
-    args : tuple[float, float, float, float, float, float, float]
+    args : ArrayLike
         The variables and parameters of the
         ODE system.
 

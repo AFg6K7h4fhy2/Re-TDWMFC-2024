@@ -396,18 +396,17 @@ def plot_and_save(
                     ),
                 )
             ]
+            # plot the group on an individual figure
+            # this will only ever plot N or S
             for i, group in enumerate(groups_for_k):
-                figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
-                axes[0].set_title(
-                    f"{model_name}: Population Change", fontsize=20
-                )
-                axes[0].set_ylabel(r"$N$", rotation=90, fontsize=15)
-                axes[0].set_xlabel("t", fontsize=20)
-                axes[1].set_title(
-                    f"{model_name}: State Resources", fontsize=20
-                )
-                axes[1].set_ylabel(r"$S$", rotation=90, fontsize=15)
-                axes[1].set_xlabel("t", fontsize=20)
+                figure, axes = plt.subplots(nrows=1, ncols=2)
+                axes[0].set_title(f"{model_name}: Population Change")
+                axes[0].set_ylabel(r"$N$", rotation=90)
+                axes[0].set_xlabel("t")
+                type_S = "Resources" if model_name == "DFM" else "Wealth"
+                axes[1].set_title(f"{model_name}: State {type_S}")
+                axes[1].set_ylabel(r"$S$", rotation=90)
+                axes[1].set_xlabel("t")
                 for elt in group:
                     sol = elt[0]
                     N, S = sol.ys.T
@@ -423,7 +422,6 @@ def plot_and_save(
                         S.tolist(),
                         label=rf"{LABELS[k]}={round(param_val, 2)}",
                     )
-
                 if param_box:
                     figure.subplots_adjust(bottom=0.5)
                     param_list = "; ".join(
