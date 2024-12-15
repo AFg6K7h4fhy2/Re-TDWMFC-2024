@@ -3,14 +3,15 @@ Sets up an experiment for use with the
 Demographic Fiscal Model (DFM) or Demographic
 Wealth Model (DWM) by reading in variable and
 parameter values from configuration files.
-This script must be ran from within the
-folder `src`.
+The purpose of this file is to permit easy
+visualization capabilities for different
+combinations of parameters.
 
 To run w/ normal plots:
 python3 exp_setup.py --DFM --config "fig_01.toml"
 
 To run w/ custom style:
-python3 exp_setup.py --DFM --config "fig_01.toml" --style "multi_param"
+python3 exp_setup.py --DFM --config "fig_01.toml" --style "multi_param" --param_box
 
 To run w/ custom style and param boxes:
 python3 exp_setup.py --DWM --config "fig_01.toml" --style "multi_param" --param_box
@@ -21,7 +22,7 @@ import itertools as it
 import pathlib
 import time
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Callable
 
 import diffrax
 import jax
@@ -29,13 +30,50 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import toml
 from jax.typing import ArrayLike
-
 from models import DFM, DWM
 
+# parameters for model running that ought
+# never to have multiple values defined
+# for them in a configuration file
 CONFIG_SPECS = ["t0", "t1", "dt0"]
+
+# the variables (population and state
+# resources, in case of DFM, or wealth, in
+# case of DWM)
 CONFIG_VARS = ["init_N", "init_S"]
-CONFIG_PARAMS = [  # both DFM and DWM params
-    "init_p",
+
+# currently supported models
+SUPPORTED_MODELS = ["DFM", "DWM"]
+
+# additional models can be added here
+CONFIG_PARAMS = {
+    # the parameters that the DFM model needs
+    # and or accepts
+    "DFM": [
+        "init_s",  # initial state resources
+        "init_k",  # initial carrying capacity
+        "init_rho",  # taxation rate
+        "max_k",  # maximum carrying capacity
+        "c",  # max_k - init_k
+        "r",  # population growth rate
+        "beta",  # expenditure rate
+    ],
+    # the parameters that the DFM model needs
+    # and or accepts
+    "DWM": [
+        "init_k",  # initial carrying capacity
+        "init_rho",  # taxation rate
+        "max_k",  # maximum carrying capacity
+        "c",  # max_k - init_k
+        "r",  # population growth rate
+        "beta",  # expenditure rate
+        "alpha",  # ?
+        "d",  # strength of negative feedback from S to N
+        "g",  # tax rate times the fraction of surplus gained through investing/expanding
+    ],
+}
+
+CONFIG_PARAMS = [
     "init_s",
     "init_k",
     "max_k",
@@ -48,10 +86,16 @@ CONFIG_PARAMS = [  # both DFM and DWM params
 ]
 CONFIG_ENTRIES = CONFIG_SPECS + CONFIG_VARS + CONFIG_PARAMS
 NON_LISTLIKE_KEYS = CONFIG_SPECS
-LABELS = {  # both DFM and DWM params
+
+CONFIG_ITEMS_ALL = CONFIG_SPECS + CONFIG_VARS
+
+# the LaTeX labels for different variables
+# and parameters used across the DWM and DFM
+# models
+LABELS = {
     "init_N": r"$N_0$",
     "init_S": r"$S_0$",
-    "init_p": r"$\rho_0$",
+    "init_rho": r"$\rho_0$",
     "init_s": r"$s_0$",
     "init_k": r"$k_0$",
     "max_k": r"$k_{\text{max}}$",
@@ -69,14 +113,31 @@ def check_values_interval(
     min_value: int | float,
     max_value: int | float,
 ) -> bool:
-    # check that each entry in values is
-    # either float or integer
+    """
+    Checks whether all numerical elements of
+    a list are within specified bounds.
+
+    Parameters
+    ----------
+    values : list[int] | list[float]
+        Variables or parameters.
+    min_value : int | float
+        The lower bound (inclusive).
+    max_value : int | float
+        The upper bound (inclusive).
+
+    Returns
+    -------
+    bool
+        Whether all values are within the
+        specified bounds.
+    """
+    # make sure all elements are int or float
     if not all(isinstance(value, (int, float)) for value in values):
         raise TypeError(
             f"All values must be either int or float; got {values}."
         )
-    # check that the values are captured in
-    # an appropriate range
+    # make sure all elements are in bounds
     if all(min_value <= value <= max_value for value in values):
         return True
     else:
@@ -86,12 +147,27 @@ def check_values_interval(
 
 
 def ensure_listlike(x: Any) -> Sequence[Any]:
+    """
+    Ensures that an element is listlike,
+    i.e. a Sequence.
+
+    Parameters
+    ----------
+    x : Any
+        An object intended to be listlike.
+
+    Returns
+    -------
+    Sequence[Any]
+        The object if already listlike or
+        a list containing the object.
+    """
     return x if isinstance(x, Sequence) else [x]
 
 
 def load_and_validate_config(
     config_file: str,
-) -> dict[str, float | int | list[int] | list[float]]:
+) -> dict[str, str | float | int | list[int] | list[float]]:
     """
     Extract content specified in a TOML
     configuration file.
@@ -103,17 +179,16 @@ def load_and_validate_config(
 
     Returns
     -------
-    dict[str, float | int | list[int] | list[float]]
+    dict[str, str | float | int | list[int] | list[float]]
         A dictionary of model specifications,
         parameters, and variables. The
         following parameters and variables
         are permitted to be lists: init_N,
-        init_S, init_p, init_s, init_k,
-        max_k, c, r, beta. There are certain
-        conditions for these parameters that
-        must be met.
+        init_S, init_rho, init_s, init_k,
+        max_k, c, r, beta.
     """
-    # the established config location
+    # the established config location;
+    # assumed one is running code in ./src
     base_path = pathlib.Path("../config")
     config_path = base_path / config_file
     # confirm the config file exists
@@ -124,65 +199,80 @@ def load_and_validate_config(
         config = toml.load(config_path)
     except Exception as e:
         raise Exception(f"Error while loading TOML: {e}")
-    # ensure that the entries are subset of
-    # required entries
+    # ensure that all loaded configuration
+    # entries are proper
     loaded_entries = list(config.keys())
-    if not set(loaded_entries).issubset(set(CONFIG_ENTRIES)):
-        diff = set(loaded_entries).difference(set(CONFIG_ENTRIES))
+    if "model" not in loaded_entries:
         raise ValueError(
-            f"Foreign keys present in the config: {diff}.\nAccepted: {set(CONFIG_ENTRIES)}"
+            'There is currently not "model" key in the loaded configuration elements.'
         )
-    # if certain entries are missing, fill in
-    # with default values
-    # TODO: use default or force use of all necessary components?
-    if sorted(loaded_entries) != sorted(CONFIG_ENTRIES):
-        default_config_path = pathlib.Path("../config/default.toml")
-        if not default_config_path.is_file():
-            raise FileNotFoundError(
-                f"Default config file not found: {default_config_path}"
-            )
-        try:
-            default_config = toml.load(default_config_path)
-        except Exception as e:
-            raise Exception(f"Error while loading default TOML: {e}")
-        default_entries = list(default_config.keys())
-        diff_default = set(default_entries).difference(set(loaded_entries))
-        diff_dict = {
-            k: default_config[k]
-            for k in list(diff_default)
-            if k not in loaded_entries
-        }
-        config = {**config, **diff_dict}
-    # ensure all config entries are listlike
-    # and then have valid values
-    for k, v in config.items():
-        if not isinstance(v, list) and k not in NON_LISTLIKE_KEYS:
-            config[k] = ensure_listlike(v)
-    # TODO: check t0, t1, dt0
-    # TODO: check c, max_k, init_k
-    # TODO: non-listlike initN and initS?
-    check_values_interval(
-        values=config["init_N"], min_value=0.01, max_value=5.0
-    )
-    check_values_interval(
-        values=config["init_S"], min_value=0.0, max_value=5.0
-    )
-    check_values_interval(values=config["init_p"], min_value=1, max_value=4)
-    check_values_interval(values=config["init_s"], min_value=1, max_value=30)
-    check_values_interval(values=config["init_k"], min_value=1, max_value=10)
-    check_values_interval(values=config["max_k"], min_value=1, max_value=10)
-    check_values_interval(values=config["c"], min_value=1, max_value=10)
-    check_values_interval(values=config["r"], min_value=0.01, max_value=0.90)
-    check_values_interval(
-        values=config["beta"], min_value=0.00, max_value=0.90
-    )
-    max_init_k = max(config["init_k"])
-    max_max_k = max(config["max_k"])
-    if max_init_k >= max_max_k:
+    model_specified = config["model"]
+    if model_specified not in SUPPORTED_MODELS:
         raise ValueError(
-            f"Maximum carry capacity (got {max_max_k}) must be greater than initial carry capacity (got {max_init_k})."
+            f"The specified model ({model_specified}) is not in the supported models: {SUPPORTED_MODELS}."
+        )
+    missing_model_vals = [
+        val
+        for val in CONFIG_PARAMS[model_specified]
+        if val not in loaded_entries
+    ]
+    if missing_model_vals:
+        raise ValueError(
+            f"The following values ({missing_model_vals}) are missing for the {model_specified} model."
+        )
+    # ensure all config entries are listlike
+    vars_to_make_listlike = CONFIG_VARS + CONFIG_PARAMS[model_specified]
+    for k, v in config.items():
+        if not isinstance(v, list) and k in vars_to_make_listlike:
+            config[k] = ensure_listlike(v)
+    # ensure variables and parameters are
+    # within the correct intervals
+    # check_values_interval(
+    #     values=config["init_N"], min_value=0.01, max_value=5.0
+    # )
+    # check_values_interval(
+    #     values=config["init_S"], min_value=0.0, max_value=5.0
+    # )
+    # check_values_interval(values=config["init_rho"], min_value=1, max_value=4)
+    # check_values_interval(values=config["init_s"], min_value=1, max_value=30)
+    # check_values_interval(values=config["init_k"], min_value=1, max_value=10)
+    # check_values_interval(values=config["max_k"], min_value=1, max_value=10)
+    # check_values_interval(values=config["c"], min_value=1, max_value=10)
+    # check_values_interval(values=config["r"], min_value=0.01, max_value=0.90)
+    # check_values_interval(
+    #     values=config["beta"], min_value=0.00, max_value=0.90
+    # )
+    max_init_k = max(config["init_k"])
+    min_max_k = min(config["max_k"])
+    if max_init_k >= min_max_k:
+        raise ValueError(
+            f"Minimum max carry capacity (got {min_max_k}) must be greater than initial carry capacity (got {max_init_k})."
         )
     return config
+
+
+def run_clio_model(
+    t0: int,
+    t1: int,
+    dt0: float,
+    model: Callable,
+    y0s: list[ArrayLike],
+    args: list[ArrayLike],
+):
+    """
+    Run a single cliodynamics model.
+    """
+    saveat = diffrax.SaveAt(ts=jnp.linspace(t0, t1, t1 - t0))
+    solver = diffrax.Tsit5()
+    term = diffrax.ODETerm(model)
+    sols = [
+        diffrax.diffeqsolve(
+            term, solver, t0, t1, dt0, y0, args=arg, saveat=saveat
+        )
+        for y0 in y0s
+        for arg in args
+    ]
+    return sols
 
 
 def run_model(
@@ -191,24 +281,18 @@ def run_model(
     list[jax.Array], list[list[float]], dict[str, list[float] | list[int]]
 ]:
     """
-    Run a single cliodynamics model (DFM or
-    DWM) using a combination of variables and
-    parameters.
+    Run a single cliodynamics model using
+    the configured variables and parameters.
 
     Parameters
     ----------
-    config : dict[str, float | int | list[int] | list[float]]
+    config : dict[str, str | float | int | list[int] | list[float]]
         A dictionary of model specifications,
         parameters, and variables. The
         following parameters and variables
         are permitted to be lists: init_N,
-        init_S, init_p, init_s, init_k,
-        max_k, c, r, beta. There are certain
-        conditions for these parameters that
-        must be met.
-    model : str
-        The name of the model. Either DFM
-        or DWM.
+        init_S, init_rho, init_s, init_k,
+        max_k, c, r, beta.
 
     Returns
     -------
@@ -229,13 +313,22 @@ def run_model(
         term = diffrax.ODETerm(DFM)
         input_dict = {
             k: config[k]
-            for k in ["r", "init_p", "beta", "init_k", "c", "init_s"]
+            for k in ["r", "init_rho", "beta", "init_k", "c", "init_s"]
         }
     if model == "DWM":
         term = diffrax.ODETerm(DWM)
         input_dict = {
             k: config[k]
-            for k in ["r", "init_p", "beta", "alpha", "d", "g", "c", "init_k"]
+            for k in [
+                "r",
+                "init_rho",
+                "beta",
+                "alpha",
+                "d",
+                "g",
+                "c",
+                "init_k",
+            ]
         }
     # get combinations of parameters, group
     # by each parameter
@@ -345,7 +438,7 @@ def plot_and_save_to_pdf(
                 for elt in group:
                     sol = elt[0]
                     N, S = sol.ys.T
-                    S = jnp.maximum(S, 0.0)
+                    # S = jnp.maximum(S, 0.0)
                     timepoints = sol.ts
                     param_val = elt[1][var_param_by_index[k]]
                     axes[0].plot(
@@ -430,16 +523,6 @@ if __name__ == "__main__":
         description="Argparser for re-tdwmfc-wittmann. Helps with which model to use, figure to re-create, and whether to save plots."
     )
     parser.add_argument(
-        "--DFM",
-        action="store_true",
-        help="Whether to use the Demographic Fiscal Model (DFM).",
-    )
-    parser.add_argument(
-        "--DWM",
-        action="store_true",
-        help="Whether to use the Demographic Wealth Model (DWM).",
-    )
-    parser.add_argument(
         "--config",
         type=str,
         required=True,
@@ -449,7 +532,7 @@ if __name__ == "__main__":
         "--style",
         type=str,
         default="default",
-        help="(optional) The name of the style file to use. Defaults to Grayscale.",
+        help="(optional) The name of the style file to use.",
     )
     parser.add_argument(
         "--save_as_pdf",
@@ -484,11 +567,5 @@ if __name__ == "__main__":
         help="Whether to have the parameters and variables in a box in the figures.",
     )
     args = parser.parse_args()
-    # check that one but not both models
-    # were provided
-    if (args.DFM + args.DWM) != 1:
-        raise ValueError(
-            "You must provide exactly one of --DFM or --DWM, not both or neither."
-        )
     # pass args to main and execute model
     main(args)

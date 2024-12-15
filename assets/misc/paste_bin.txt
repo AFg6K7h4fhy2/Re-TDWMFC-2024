@@ -1,3 +1,30 @@
+loaded_entries = list(config.keys())
+    if not set(loaded_entries).issubset(set(CONFIG_ITEMS_ALL)):
+        diff = set(loaded_entries).difference(set(CONFIG_ITEMS_ALL))
+        raise ValueError(
+            f"Foreign keys present in the config: {diff}.\nAccepted: {set(CONFIG_ITEMS_ALL)}"
+        )
+if sorted(loaded_entries) != sorted(CONFIG_ENTRIES):
+        default_config_path = pathlib.Path("../config/default.toml")
+        if not default_config_path.is_file():
+            raise FileNotFoundError(
+                f"Default config file not found: {default_config_path}"
+            )
+        try:
+            default_config = toml.load(default_config_path)
+        except Exception as e:
+            raise Exception(f"Error while loading default TOML: {e}")
+        default_entries = list(default_config.keys())
+        diff_default = set(default_entries).difference(set(loaded_entries))
+        diff_dict = {
+            k: default_config[k]
+            for k in list(diff_default)
+            if k not in loaded_entries
+        }
+        config = {**config, **diff_dict}
+
+
+
 groups_for_k = ""
             groups_for_k_03 = [
                 list(group)

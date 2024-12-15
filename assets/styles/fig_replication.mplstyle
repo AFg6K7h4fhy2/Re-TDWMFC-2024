@@ -19,7 +19,6 @@
 ################################################################################
 
 
-
 figure.figsize: 8, 6 # figure size in inches
 figure.dpi: 150 # figure dots per inch
 

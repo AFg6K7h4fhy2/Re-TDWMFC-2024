@@ -8,6 +8,7 @@ __Links__
 
 * [The paper online.](https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0298318&type=printable).
 * [A PDF of the paper](./assets/2024-TDWMFC-Wittmann.pdf).
+* [The paper's GS citations](https://scholar.google.com/scholar?cites=4147056941143982529&as_sdt=5,44&sciodt=0,44&hl=en).
 
 __Citation__:
 
