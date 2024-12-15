@@ -78,9 +78,13 @@ def DFM(
     # capacity from state resources,
     # initial state resources
     r, init_rho, beta, init_k, c, init_s = args
-    dN = r * N * (1 - (N / k(S, init_k, c, init_s)))
+    dN = jnp.where(
+        S >= 0.0,
+        r * N * (1 - (N / k(S, init_k, c, init_s))),
+        r * N * (1 - (N / k(0.0, init_k, c, init_s))),
+    )
     dS = jnp.where(
-        S > 0.0,
+        S >= 0.0,
         (init_rho * N * (1 - (N / k(S, init_k, c, init_s)))) - (beta * N),
         0.0,
     )

@@ -411,7 +411,6 @@ def plot_and_save(
                 for elt in group:
                     sol = elt[0]
                     N, S = sol.ys.T
-                    S = jnp.maximum(S, 0.0)
                     timepoints = sol.ts
                     param_val = elt[1][model_vars_and_params_w_indices[k]]
                     axes[0].plot(

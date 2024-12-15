@@ -86,6 +86,11 @@ def DWM(
     #  increase capacity from state wealth,
     # initial carrying capacity,
     r, beta, alpha, d, g, c, init_k = args
-    dN = (r * N * (1 - (N / k(S, init_k, c)))) - (alpha * S * (N / (d + N)))
-    dS = jnp.where(S > 0.0, (g * S * N) - (beta * S), 0.0)
+    dN = jnp.where(
+        S >= 0.0,
+        (r * N * (1 - (N / k(S, init_k, c)))) - (alpha * S * (N / (d + N))),
+        (r * N * (1 - (N / k(0.0, init_k, c))))
+        - (alpha * 0.0 * (N / (d + N))),
+    )
+    dS = jnp.where(S >= 0.0, (g * S * N) - (beta * S), 0.0)
     return jnp.array([dN, dS])
