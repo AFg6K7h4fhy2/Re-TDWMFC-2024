@@ -1,4 +1,120 @@
 
+"""
+    Plots and or saves the executed
+    cliodynamics model results. The file name
+    included the model name, the configuration
+    file, and the date as (ISO 8601). The PDF
+    or image file metadata contains the
+    Python code and toml file contents for the
+    images produced therein. Overwrite defaults
+    to False. Parameter box defaults to False.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model used. Usually is
+        either DFM or DWM.
+    config : dict[str, str | float | int | list[int] | list[float]]
+        A dictionary of model specifications,
+        parameters, and variables. The
+        following parameters and variables
+        are permitted to be lists: init_N,
+        init_S, init_rho, init_s, init_k,
+        max_k, c, r, beta.
+    y0s : list[jax.Array]
+        The initial variable values for
+        the model.
+    args : list[jax.Array]
+        Different combinations of parameters
+        for the specified model.
+    sols : list[jax.Array]
+        A list of ODE solutions corresponding
+        to different combinations of variables
+        and parameters of the specified model.
+    model_input : dict[str, list[float] | list[int]]
+        Parameters and their values for the
+        specified model.
+    save_name : str
+        What to name the output file.
+    overwrite : bool
+        Whether to overwrite a saved output
+        file. Defaults to False.
+    param_box : bool
+        Whether to use a parameter box showing
+        the values of parameters used in the
+        model.
+    style : str
+        The name of the style file to use for
+        plotting. Defaults to None, i.e.
+        matplotlib's default style.
+
+    Returns
+    -------
+    None
+        A PDF or image of the figures produced.
+    """
+
+# plot as an image if there is only a
+# single plot (all vars and params len 1
+# or just one that is not len 1),
+# otherwise plot as a pdf
+plot_as_img = (
+    sum(
+        [
+            0 if len(elt) == 1 else 1
+            for elt in len_model_vars_and_params.values()
+        ]
+    )
+    <= 1
+)
+
+if param_box:
+    figure.subplots_adjust(bottom=0.5)
+    param_list = "; ".join(
+        [
+            f"{LABELS[_]}={', '.join([str(round(e, 2)) for e in config[_]])}"
+            for _ in model_vars_and_params
+            if _ != k
+        ]
+    )
+    figure.text(
+        0.5,  # center
+        0.02,  # near bottom
+        f"Parameters: {param_list}",
+        ha="center",
+        va="top",
+        fontsize=12,
+        bbox=dict(
+            facecolor="white",
+            edgecolor="black",
+            boxstyle="round,pad=0.5",
+        ),
+    )
+
+
+
+if param_box:
+        figure.subplots_adjust(bottom=0.5)
+        param_list = "; ".join(
+            [
+                f"{LABELS[_]}={', '.join([str(round(e, 2)) for e in config[_]])}"
+                for _ in model_vars_and_params
+                if _ != k
+            ]
+        )
+        figure.text(
+            0.5,  # center
+            0.02,  # near bottom
+            f"Parameters: {param_list}",
+            ha="center",
+            va="top",
+            fontsize=12,
+            bbox=dict(
+                facecolor="white",
+                edgecolor="black",
+                boxstyle="round,pad=0.5",
+            ),
+        )
 
     # # get model name
     # model_name = "DFM" if args.DFM else "DWM"
