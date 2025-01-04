@@ -101,7 +101,7 @@ LABELS = {
 
 
 def load_and_validate_config(
-    config_file: str,
+    config_path: str,
 ) -> dict[str, str | float | int | list[int] | list[float]]:
     """
     Extract content specified in a TOML
@@ -122,30 +122,32 @@ def load_and_validate_config(
         init_S, init_rho, init_s, init_k,
         max_k, c, r, beta.
     """
-    # the established config location;
-    # assumed one is running code in ./src
-    base_path = pathlib.Path("../config")
-    config_path = base_path / config_file
+    # convert the config path to a pathlib.Path object
+    config_path = pathlib.Path(config_path)
+
     # confirm the config file exists
     if not config_path.is_file():
         raise FileNotFoundError(f"Config file not found: {config_path}")
-    # attempt loading the toml config file
+
+    # attempt loading the TOML config file
     try:
         config = toml.load(config_path)
     except Exception as e:
         raise Exception(f"Error while loading TOML: {e}")
-    # ensure that all loaded configuration
-    # entries are proper
+
+    # ensure that all loaded configuration entries are proper
     loaded_entries = list(config.keys())
     if "model" not in loaded_entries:
         raise ValueError(
-            'There is currently not "model" key in the loaded configuration elements.'
+            'There is currently no "model" key in the loaded configuration elements.'
         )
+
     model_specified = config["model"]
     if model_specified not in SUPPORTED_MODELS:
         raise ValueError(
             f"The specified model ({model_specified}) is not in the supported models: {SUPPORTED_MODELS}."
         )
+
     missing_model_vals = [
         val
         for val in CONFIG_SPECS + CONFIG_VARS + CONFIG_PARAMS[model_specified]
@@ -155,43 +157,20 @@ def load_and_validate_config(
         raise ValueError(
             f"The following values ({missing_model_vals}) are missing for the {model_specified} model."
         )
-    # ensure all config entries are listlike
+
+    # ensure all config entries are list-like
     vars_to_make_listlike = CONFIG_VARS + CONFIG_PARAMS[model_specified]
     for k, v in config.items():
         if not isinstance(v, list) and k in vars_to_make_listlike:
             config[k] = ensure_listlike(v)
-    # ensure variables and parameters are
-    # within the correct intervals
-    # check_values_interval(
-    #     values=config["init_N"], min_value=0.01, max_value=5.0
-    # )
-    # check_values_interval(
-    #     values=config["init_S"], min_value=0.0, max_value=5.0
-    # )
-    # check_values_interval(values=config["init_rho"], min_value=1, max_value=4)
-    # check_values_interval(values=config["init_s"], min_value=1, max_value=30)
-    # check_values_interval(values=config["init_k"], min_value=1, max_value=10)
-    # check_values_interval(values=config["max_k"], min_value=1, max_value=10)
-    # check_values_interval(values=config["c"], min_value=1, max_value=10)
-    # check_values_interval(values=config["r"], min_value=0.01, max_value=0.90)
-    # check_values_interval(
-    #     values=config["beta"], min_value=0.00, max_value=0.90
-    # )
-    # max_init_k = max(config["init_k"])
-    # min_max_k = min(config["max_k"])
-    # if max_init_k >= min_max_k:
-    #     raise ValueError(
-    #         f"Minimum max carry capacity (got {min_max_k}) must be greater than initial carry capacity (got {max_init_k})."
-    #     )
+
+    # return the validated configuration
     return config
 
 
 def get_y0s(
     init_N: list[float] | list[int], init_S: list[float] | list[int]
 ) -> list[jax.Array]:
-    """
-    TODO:
-    """
     y0s = [jnp.array(pair) for pair in list(it.product(init_N, init_S))]
     return y0s
 
@@ -199,9 +178,6 @@ def get_y0s(
 def get_args(
     model_input: dict[str, list[int] | list[float]]
 ) -> list[jax.Array]:
-    """
-    TODO:
-    """
     args = [
         jnp.array(group)
         for group in list(
@@ -405,7 +381,7 @@ def plot_experiments(
 def main(parsed_args: argparse.Namespace) -> None:
 
     # get configuration file
-    config = load_and_validate_config(config_file=parsed_args.config)
+    config = load_and_validate_config(config_path=parsed_args.config)
 
     # get model (DFM or DWM) specified
     model_selected = config["model"]
