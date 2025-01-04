@@ -11,7 +11,7 @@ from jax.typing import ArrayLike
 
 def k(S: float, init_k: int, c: int, init_s: int) -> float:
     """
-    A state's carrying capacity as used in
+    A state's carrying capacity, as used in
     the DFM. Determined in part by the
     state's current resources, it's initial
     carry capacity, how well the state can

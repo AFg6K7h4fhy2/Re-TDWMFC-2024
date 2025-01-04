@@ -1,21 +1,28 @@
 """
 Sets up a Demographic Fiscal Model (DFM) or
-Demographic Wealth Model (DWM) experiment.
-Each experiment consists of model results
-corresponding to variable and parameter values
-specified in a configuration file. Visualization
-of Population (N) and State Resources / Wealth
-(S) over time or in relation to a model
-variable or parameter is afforded as well.
-This script is meant to be run from within
-`./src`. This setup file can easily reproduce
-the figures: 01, 02, 03, 08, 09, 10, 11.
+Demographic Wealth Model (DWM) experiment,
+where an experiments consists of model
+results corresponding to variable and
+parameter values, which are specified in a
+configuration file. The model experiment
+visualizations only cover the relationship
+between Population (N) and State Resources
+or Wealth (S), over time. This script is
+meant to be run from within `./src`. This
+setup file can easily reproduce
+the figures: 01, 02, 03, 08, 09, 10, 11 of
+(The Demographic-Wealth model for
+cliodynamics, 2024).
 
 To run w/ normal plots:
 python3 exp_setup.py --config "fig_01.toml"
+python3 exp_setup.py --config "fig_03.toml" --plot
+python3 exp_setup.py --config "fig_01.toml" --plot --style_path "../assets/styles/general_AF.mplstyle"
+python3 exp_setup.py --config "exp_fig_01.toml" --plot --style_path "../assets/styles/general_AF.mplstyle"
 """
 
 import argparse
+import datetime as dt
 import itertools as it
 import pathlib
 import time
@@ -23,7 +30,9 @@ import time
 import diffrax
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 import toml
+from matplotlib.backends.backend_pdf import PdfPages
 
 from DFM import DFM
 from DWM import DWM
@@ -71,11 +80,6 @@ CONFIG_PARAMS = {
         "init_k",  # initial carrying capacity
     ],
 }
-
-# assets folders
-FIGURE_DIRECTORY = "../assets/figures/"
-RESULTS_DIRECTORY = "../assets/output/"
-STYLES_DIRECTORY = "../assets/styles/"
 
 # the LaTeX labels for different variables
 # and parameters used across the DWM and DFM
@@ -233,68 +237,35 @@ def run_clio_model(
     return sols
 
 
-# def create_plot(
-#     model_name: str,
-#     y0s: list[jax.Array],
-#     args: list[jax.Array],
-#     sols: list[jax.Array],
-#     style: str = None,
-# ) -> plt.Figure:
-#     """
-#     Creates a plot for the model results based on the provided data.
-
-#     Parameters
-#     ----------
-#     model_name : str
-#         The name of the model (e.g., DFM or DWM).
-#     y0s : list[jax.Array]
-#         The initial variable values for the model.
-#     args : list[jax.Array]
-#         Different combinations of parameters for the specified model.
-#     sols : list[jax.Array]
-#         A list of ODE solutions corresponding to different combinations of variables and parameters of the specified model.
-#     style : str
-#         Optional style to apply to the plot (e.g., 'seaborn', 'ggplot').
-
-#     Returns
-#     -------
-#     figure : matplotlib.figure.Figure
-#         The generated figure object for the plot.
-#     """
-#     figure, axes = plt.subplots(nrows=1, ncols=2)
-#     # population side plotting
-#     axes[0].set_title(f"{model_name}: Population Change")
-#     axes[0].set_ylabel(r"$N$", rotation=90)
-#     axes[0].set_xlabel("t")
-#     type_S = "Resources" if model_name == "DFM" else "Wealth"
-#     axes[1].set_title(f"{model_name}: State {type_S}")
-#     axes[1].set_ylabel(r"$S$", rotation=90)
-#     axes[1].set_xlabel("t")
-#     for elt in group:
-#         sol = elt[0]
-#         N, S = sol.ys.T
-#         timepoints = sol.ts
-#         param_val = elt[1][model_vars_and_params_w_indices[k]]
-#         axes[0].plot(
-#             timepoints.tolist(),
-#             N.tolist(),
-#             label=rf"{LABELS[k]}={round(param_val, 2)}",
-#         )
-#         axes[1].plot(
-#             timepoints.tolist(),
-#             S.tolist(),
-#             label=rf"{LABELS[k]}={round(param_val, 2)}",
-#         )
-
-#     axes[0].legend()
-#     axes[1].legend()
-#     # limit setting must come
-#     # after axes.plot()
-#     axes[1].set_xlim(xmin=0)
-#     axes[1].set_ylim(ymin=0)
-#     axes[0].set_xlim(xmin=0)
-#     axes[0].set_ylim(ymin=0)
-#     plt.show()
+def get_sols_and_entries(
+    model_selected: str,
+    config: dict[str, str | float | int | list[int] | list[float]],
+    y0s: list[jax.Array],
+    args: list[jax.Array],
+    sols: list[jax.Array],
+):
+    # associate the correctly ordered variables
+    # and parameters with indices
+    model_vars_and_params = CONFIG_VARS + CONFIG_PARAMS[model_selected]
+    len_model_vars_and_params = {
+        k: len(config[k]) for k in model_vars_and_params
+    }
+    model_vars_and_params_indices = list(range(len(model_vars_and_params)))
+    model_vars_and_params_w_indices = {
+        k: i
+        for i, k in zip(model_vars_and_params_indices, model_vars_and_params)
+    }
+    entries = [
+        y0.tolist() + arg.tolist()
+        for i, y0 in enumerate(y0s)
+        for j, arg in enumerate(args)
+    ]
+    sols_and_entries = list(zip(sols, entries))
+    return (
+        len_model_vars_and_params,
+        model_vars_and_params_w_indices,
+        sols_and_entries,
+    )
 
 
 def save_experiments(
@@ -304,226 +275,216 @@ def save_experiments(
     pass
 
 
-# def plot_experiments(
-#     y0s: list[jax.Array],
-#     args: list[jax.Array],
-#     sols: list[jax.Array],
-#     model_vars_and_params: dict[str, int | float | list[float] | list[int]],
-#     len_model_vars_and_params: dict[str, int],
-#     model_input: dict[str, list[float] | list[int]],
-#     save_name: str,
-#     style_name: str,
-#     separate_plots: bool,
-#     overwrite: bool,
-# ) -> None:
+def plot_experiments(
+    config_name: str,
+    len_model_vars_and_params: dict[str, list[float] | list[int]],
+    model_vars_and_params_w_indices: dict[str, list[float] | list[int]],
+    sols_and_entries: list[jax.Array],
+    model_selected: str,
+    model_input: dict[str, list[float] | list[int]],
+    output_path: str,
+    style_path: str,
+    separate_plots: bool,
+    overwrite: bool,
+) -> None:
 
-#     # get style to use; again, assuming the
-#     # code is being run from within ./src
-#     base_style_path = pathlib.Path("../assets/styles")
-#     if style is not None:
-#         style_path = base_style_path / (style + ".mplstyle")
-#         if style_path.exists():
-#             plt.style.use(str(style_path))
-#             print(f"Loaded style: {style}.")
-#         else:
-#             raise FileNotFoundError(f"Style file {style}.mplstyle not found.")
+    # get style to use; again, assuming the
+    # code is being run from within ./src
+    if style_path:
+        style_path = pathlib.Path(style_path)
+        if style_path.exists():
+            plt.style.use(str(style_path))
+        else:
+            raise FileNotFoundError(f"Style file at {style_path} not found.")
 
-#     # by default, this function looks for
-#     # ../assets/figures as a directory...
-#     current_date = dt.datetime.now().isoformat()
-#     if not os.path.exists(FIGURE_DIRECTORY):
-#         os.makedirs(FIGURE_DIRECTORY)
-#         raise FileNotFoundError(
-#             f"The directory {FIGURE_DIRECTORY} does not exist."
-#         )
-#     file_name = f"{save_name}_{current_date}.pdf"
-#     file_path = os.path.join(FIGURE_DIRECTORY, file_name)
+    # ensure output directory exists
+    output_path = pathlib.Path(output_path)
+    output_path.mkdir(parents=True, exist_ok=True)
 
-#     # associate the correctly ordered variables
-#     # and parameters with indices
-#     model_vars_and_params_indices = list(range(len(model_vars_and_params)))
-#     model_vars_and_params_w_indices = {
-#         k: i
-#         for i, k in zip(model_vars_and_params_indices, model_vars_and_params)
-#     }
-#     entries = [
-#         y0.tolist() + arg.tolist()
-#         for i, y0 in enumerate(y0s)
-#         for j, arg in enumerate(args)
-#     ]
-#     sols_and_entries = list(zip(sols, entries))
+    # prepare output file
+    current_date = dt.datetime.now().strftime("%Y%m%d_%H")
+    config_name = pathlib.Path(config_name).stem
+    file_name = f"{config_name}_{current_date}.pdf"
+    file_path = output_path / file_name
 
-#     # acceptable xaxis values
-#     acceptable_xaxes = CONFIG_PARAMS + ["time"]
-#     # check that
+    # if not overwrite, don't make file
+    if file_path.exists() and not overwrite:
+        print(f"File {file_path} already exists. Skipping.")
+        return
 
-#     if not plot_as_img:
-#         # create pdf to save multiple figures
-#         with PdfPages(file_path) as pdf:
-#             # for each figure, create
-#             # the plot and add it to the PDF
-#             # plot by groups of variables and parameters
-#             for k, v in model_vars_and_params_w_indices.items():
-#                 # variables or parameters of length
-#                 # one are taken into account below
-#                 if len_model_vars_and_params[k] > 1:
-#                     exclude_index = model_vars_and_params_w_indices[k]
-#                     # NEED to sort groups before
-#                     # it.groupby!!!; remember
-#                     # s_e[1][i] gets the ith entry of
-#                     # y0.tolist() + arg.tolist()
-#                     sorted_group_data = sorted(
-#                         sols_and_entries,
-#                         key=lambda s_e: tuple(
-#                             s_e[1][i]
-#                             for i in range(len(s_e[1]))
-#                             if i != exclude_index
-#                         ),
-#                     )
-#                     groups_for_k = [
-#                         list(group)
-#                         for _, group in it.groupby(
-#                             sorted_group_data,
-#                             key=lambda s_e: tuple(
-#                                 s_e[1][i]
-#                                 for i in range(len(s_e[1]))
-#                                 if i != exclude_index
-#                             ),
-#                         )
-#                     ]
-#                     # plot the group on an individual figure
-#                     # this will only ever plot N or S
-#                     for i, group in enumerate(groups_for_k):
-#                         figure, axes = plt.subplots(nrows=1, ncols=2)
-#                         axes[0].set_title(f"{model_name}: Population Change")
-#                         axes[0].set_ylabel(r"$N$", rotation=90)
-#                         axes[0].set_xlabel("t")
-#                         type_S = (
-#                             "Resources" if model_name == "DFM" else "Wealth"
-#                         )
-#                         axes[1].set_title(f"{model_name}: State {type_S}")
-#                         axes[1].set_ylabel(r"$S$", rotation=90)
-#                         axes[1].set_xlabel("t")
-#                         for elt in group:
-#                             sol = elt[0]
-#                             N, S = sol.ys.T
-#                             timepoints = sol.ts
-#                             param_val = elt[1][
-#                                 model_vars_and_params_w_indices[k]
-#                             ]
-#                             axes[0].plot(
-#                                 timepoints.tolist(),
-#                                 N.tolist(),
-#                                 label=rf"{LABELS[k]}={round(param_val, 2)}",
-#                             )
-#                             axes[1].plot(
-#                                 timepoints.tolist(),
-#                                 S.tolist(),
-#                                 label=rf"{LABELS[k]}={round(param_val, 2)}",
-#                             )
+    # create pdf to save multiple figures
+    with PdfPages(file_path) as pdf:
+        # if there is but one plot to make
+        # from the configuration (single
+        # value for all variables and
+        # parameters)
+        if all(
+            len_model_vars_and_params[k] == 1
+            for k in model_vars_and_params_w_indices.keys()
+        ):
+            print(sols_and_entries)
+        # if at least one variable or parameter
+        # has multiple values
+        else:
+            for k, v in model_vars_and_params_w_indices.items():
+                # variables or parameters of length
+                # one are taken into account below
+                if len_model_vars_and_params[k] > 1:
+                    exclude_index = model_vars_and_params_w_indices[k]
+                    # NEED to sort groups before
+                    # it.groupby; remember
+                    # s_e[1][i] gets the ith entry of
+                    # y0.tolist() + arg.tolist()
+                    sorted_group_data = sorted(
+                        sols_and_entries,
+                        key=lambda s_e: tuple(
+                            s_e[1][i]
+                            for i in range(len(s_e[1]))
+                            if i != exclude_index
+                        ),
+                    )
+                    groups_for_k = [
+                        list(group)
+                        for _, group in it.groupby(
+                            sorted_group_data,
+                            key=lambda s_e: tuple(
+                                s_e[1][i]
+                                for i in range(len(s_e[1]))
+                                if i != exclude_index
+                            ),
+                        )
+                    ]
+                    # plot the group on an individual figure
+                    # this will only ever plot N or S
+                    for i, group in enumerate(groups_for_k):
+                        figure, axes = plt.subplots(nrows=1, ncols=2)
+                        axes[0].set_title(
+                            f"{model_selected}: Population Change"
+                        )
+                        axes[0].set_ylabel(r"$N$", rotation=90)
+                        axes[0].set_xlabel("t")
+                        type_S = (
+                            "Resources"
+                            if model_selected == "DFM"
+                            else "Wealth"
+                        )
+                        axes[1].set_title(f"{model_selected}: State {type_S}")
+                        axes[1].set_ylabel(r"$S$", rotation=90)
+                        axes[1].set_xlabel("t")
+                        for elt in group:
+                            sol = elt[0]
+                            N, S = sol.ys.T
+                            timepoints = sol.ts
+                            param_val = elt[1][
+                                model_vars_and_params_w_indices[k]
+                            ]
+                            axes[0].plot(
+                                timepoints.tolist(),
+                                N.tolist(),
+                                label=rf"{LABELS[k]}={round(param_val, 2)}",
+                            )
+                            axes[1].plot(
+                                timepoints.tolist(),
+                                S.tolist(),
+                                label=rf"{LABELS[k]}={round(param_val, 2)}",
+                            )
+                        axes[0].legend()
+                        axes[1].legend()
+                        # limit setting must come
+                        # after axes.plot()
+                        axes[1].set_xlim(xmin=0)
+                        axes[1].set_ylim(ymin=0)
+                        axes[0].set_xlim(xmin=0)
+                        axes[0].set_ylim(ymin=0)
+                        # plt.show()
+                        # fig = create_plot(model_name, y0s, args, [sols[idx]], style)
+                        pdf.savefig(figure)  # save fig
+                        plt.close(figure)  # close fig after saving
 
-#                         axes[0].legend()
-#                         axes[1].legend()
-#                         # limit setting must come
-#                         # after axes.plot()
-#                         axes[1].set_xlim(xmin=0)
-#                         axes[1].set_ylim(ymin=0)
-#                         axes[0].set_xlim(xmin=0)
-#                         axes[0].set_ylim(ymin=0)
-#                         # plt.show()
-#                         # fig = create_plot(model_name, y0s, args, [sols[idx]], style)
-#                         pdf.savefig(figure)  # save fig
-#                         plt.close(figure)  # close fig after saving
-#     else:
-#         # create and save a single figure (image format)
-#         fig = create_plot(model_name, y0s, args, sols)
-#         fig.savefig(file_path, overwrite=overwrite)
-#         plt.close(fig)
-
-#     # # plot by groups of variables and parameters
-#     # for k, v in model_vars_and_params_w_indices.items():
-#     #     # variables or parameters of length
-#     #     # one are taken into account below
-#     #     if len_model_vars_and_params[k] > 1:
-#     #         exclude_index = model_vars_and_params_w_indices[k]
-#     #         # NEED to sort groups before
-#     #         # it.groupby!!!; remember
-#     #         # s_e[1][i] gets the ith entry of
-#     #         # y0.tolist() + arg.tolist()
-#     #         sorted_group_data = sorted(
-#     #             sols_and_entries,
-#     #             key=lambda s_e: tuple(
-#     #                 s_e[1][i] for i in range(len(s_e[1])) if i != exclude_index
-#     #             ),
-#     #         )
-#     #         groups_for_k = [
-#     #             list(group)
-#     #             for _, group in it.groupby(
-#     #                 sorted_group_data,
-#     #                 key=lambda s_e: tuple(
-#     #                     s_e[1][i]
-#     #                     for i in range(len(s_e[1]))
-#     #                     if i != exclude_index
-#     #                 ),
-#     #             )
-#     #         ]
-#     #         # plot the group on an individual figure
-#     #         # this will only ever plot N or S
-#     #         for i, group in enumerate(groups_for_k):
-#     #             figure, axes = plt.subplots(nrows=1, ncols=2)
-#     #             axes[0].set_title(f"{model_name}: Population Change")
-#     #             axes[0].set_ylabel(r"$N$", rotation=90)
-#     #             axes[0].set_xlabel("t")
-#     #             type_S = "Resources" if model_name == "DFM" else "Wealth"
-#     #             axes[1].set_title(f"{model_name}: State {type_S}")
-#     #             axes[1].set_ylabel(r"$S$", rotation=90)
-#     #             axes[1].set_xlabel("t")
-#     #             for elt in group:
-#     #                 sol = elt[0]
-#     #                 N, S = sol.ys.T
-#     #                 timepoints = sol.ts
-#     #                 param_val = elt[1][model_vars_and_params_w_indices[k]]
-#     #                 axes[0].plot(
-#     #                     timepoints.tolist(),
-#     #                     N.tolist(),
-#     #                     label=rf"{LABELS[k]}={round(param_val, 2)}",
-#     #                 )
-#     #                 axes[1].plot(
-#     #                     timepoints.tolist(),
-#     #                     S.tolist(),
-#     #                     label=rf"{LABELS[k]}={round(param_val, 2)}",
-#     #                 )
-#     #             if param_box:
-#     #                 figure.subplots_adjust(bottom=0.5)
-#     #                 param_list = "; ".join(
-#     #                     [
-#     #                         f"{LABELS[_]}={', '.join([str(round(e, 2)) for e in config[_]])}"
-#     #                         for _ in model_vars_and_params
-#     #                         if _ != k
-#     #                     ]
-#     #                 )
-#     #                 figure.text(
-#     #                     0.5,  # center
-#     #                     0.02,  # near bottom
-#     #                     f"Parameters: {param_list}",
-#     #                     ha="center",
-#     #                     va="top",
-#     #                     fontsize=12,
-#     #                     bbox=dict(
-#     #                         facecolor="white",
-#     #                         edgecolor="black",
-#     #                         boxstyle="round,pad=0.5",
-#     #                     ),
-#     #                 )
-#     #             axes[0].legend()
-#     #             axes[1].legend()
-#     #             # limit setting must come
-#     #             # after axes.plot()
-#     #             axes[1].set_xlim(xmin=0)
-#     #             axes[1].set_ylim(ymin=0)
-#     #             axes[0].set_xlim(xmin=0)
-#     #             axes[0].set_ylim(ymin=0)
-#     #             plt.show()
+    # # plot by groups of variables and parameters
+    # for k, v in model_vars_and_params_w_indices.items():
+    #     # variables or parameters of length
+    #     # one are taken into account below
+    #     if len_model_vars_and_params[k] > 1:
+    #         exclude_index = model_vars_and_params_w_indices[k]
+    #         # NEED to sort groups before
+    #         # it.groupby!!!; remember
+    #         # s_e[1][i] gets the ith entry of
+    #         # y0.tolist() + arg.tolist()
+    #         sorted_group_data = sorted(
+    #             sols_and_entries,
+    #             key=lambda s_e: tuple(
+    #                 s_e[1][i] for i in range(len(s_e[1])) if i != exclude_index
+    #             ),
+    #         )
+    #         groups_for_k = [
+    #             list(group)
+    #             for _, group in it.groupby(
+    #                 sorted_group_data,
+    #                 key=lambda s_e: tuple(
+    #                     s_e[1][i]
+    #                     for i in range(len(s_e[1]))
+    #                     if i != exclude_index
+    #                 ),
+    #             )
+    #         ]
+    #         # plot the group on an individual figure
+    #         # this will only ever plot N or S
+    #         for i, group in enumerate(groups_for_k):
+    #             figure, axes = plt.subplots(nrows=1, ncols=2)
+    #             axes[0].set_title(f"{model_name}: Population Change")
+    #             axes[0].set_ylabel(r"$N$", rotation=90)
+    #             axes[0].set_xlabel("t")
+    #             type_S = "Resources" if model_name == "DFM" else "Wealth"
+    #             axes[1].set_title(f"{model_name}: State {type_S}")
+    #             axes[1].set_ylabel(r"$S$", rotation=90)
+    #             axes[1].set_xlabel("t")
+    #             for elt in group:
+    #                 sol = elt[0]
+    #                 N, S = sol.ys.T
+    #                 timepoints = sol.ts
+    #                 param_val = elt[1][model_vars_and_params_w_indices[k]]
+    #                 axes[0].plot(
+    #                     timepoints.tolist(),
+    #                     N.tolist(),
+    #                     label=rf"{LABELS[k]}={round(param_val, 2)}",
+    #                 )
+    #                 axes[1].plot(
+    #                     timepoints.tolist(),
+    #                     S.tolist(),
+    #                     label=rf"{LABELS[k]}={round(param_val, 2)}",
+    #                 )
+    #             if param_box:
+    #                 figure.subplots_adjust(bottom=0.5)
+    #                 param_list = "; ".join(
+    #                     [
+    #                         f"{LABELS[_]}={', '.join([str(round(e, 2)) for e in config[_]])}"
+    #                         for _ in model_vars_and_params
+    #                         if _ != k
+    #                     ]
+    #                 )
+    #                 figure.text(
+    #                     0.5,  # center
+    #                     0.02,  # near bottom
+    #                     f"Parameters: {param_list}",
+    #                     ha="center",
+    #                     va="top",
+    #                     fontsize=12,
+    #                     bbox=dict(
+    #                         facecolor="white",
+    #                         edgecolor="black",
+    #                         boxstyle="round,pad=0.5",
+    #                     ),
+    #                 )
+    #             axes[0].legend()
+    #             axes[1].legend()
+    #             # limit setting must come
+    #             # after axes.plot()
+    #             axes[1].set_xlim(xmin=0)
+    #             axes[1].set_ylim(ymin=0)
+    #             axes[0].set_xlim(xmin=0)
+    #             axes[0].set_ylim(ymin=0)
+    #             plt.show()
 
 
 def main(parsed_args: argparse.Namespace) -> None:
@@ -531,11 +492,11 @@ def main(parsed_args: argparse.Namespace) -> None:
     # get configuration file
     config = load_and_validate_config(config_file=parsed_args.config)
 
-    # model specified
+    # get model (DFM or DWM) specified
     model_selected = config["model"]
 
     # get model variable and parameter
-    # input dictionary
+    # input dictionary from config
     model_input_dict = {k: config[k] for k in CONFIG_PARAMS[model_selected]}
 
     # gets y0s and args for model
@@ -558,27 +519,35 @@ def main(parsed_args: argparse.Namespace) -> None:
         f"Experiments Using {model_selected} Ran In:\n"
         f"{round(elapsed, 5)} Seconds.\n"
     )
-    print(sols)
 
-    # possibly plot or save the model results
+    # TODO: comment
+    (
+        len_model_vars_and_params,
+        model_vars_and_params_w_indices,
+        sols_and_entries,
+    ) = get_sols_and_entries(
+        model_selected=model_selected,
+        config=config,
+        y0s=y0s,
+        args=input_args,
+        sols=sols,
+    )
+
+    # (possibly) plot model results
     if parsed_args.plot:
-        # model_vars_and_params = CONFIG_VARS + CONFIG_PARAMS[model_selected]
-        # len_model_vars_and_params = {
-        #     k: len(config[k]) for k in model_vars_and_params
-        # }
-        # plot_experiments(
-        #     y0s=y0s,
-        #     args=input_args,
-        #     sols=sols,
-        #     model_vars_and_params=model_vars_and_params,
-        #     len_model_vars_and_params=len_model_vars_and_params,
-        #     model_input=model_input_dict,
-        #     save_name=parsed_args.save_name,
-        #     style_name=parsed_args.style_name,
-        #     separate_plots=parsed_args.separate_plots,
-        #     overwrite=parsed_args.overwrite,
-        # )
-        pass
+        plot_experiments(
+            config_name=parsed_args.config,
+            len_model_vars_and_params=len_model_vars_and_params,
+            model_vars_and_params_w_indices=model_vars_and_params_w_indices,
+            sols_and_entries=sols_and_entries,
+            model_selected=model_selected,
+            model_input=model_input_dict,
+            output_path=parsed_args.output_path,
+            style_path=parsed_args.style_path,
+            separate_plots=parsed_args.separate_plots,
+            overwrite=parsed_args.overwrite,
+        )
+    # (possibly) save model results
     if parsed_args.save:
         pass
 
@@ -587,18 +556,18 @@ if __name__ == "__main__":
     # setup and use argument parser for
     # command line arguments
     parser = argparse.ArgumentParser(
-        description="Argparser for re-tdwmfc-wittmann. Helps with which model to use, figure to re-create, and whether to save plots."
+        description="The argparser for DFM or DWM experiments."
     )
     parser.add_argument(
-        "--config",
+        "--config_path",
         type=str,
         required=True,
-        help="The name of the configuration file to use for the model experiment.",
+        help="The path to a configuration file to use.",
     )
     parser.add_argument(
         "--plot",
         action="store_true",
-        help="Whether to plot the results of the experiment.",
+        help="Whether to plot (and have saved) the results of the experiment.",
     )
     parser.add_argument(
         "--save",
@@ -606,33 +575,35 @@ if __name__ == "__main__":
         help="Whether to save the results the numerical results of the experiment.",
     )
     parser.add_argument(
-        "--save_name",
+        "--output_path",
         type=str,
-        default="",
-        help="The name of the file to save outputted results. Required if either --save or --plot is True. Same for output for --save and --plot, just different extensions.",
+        default=".",
+        help="The folder for saved output files (plot PDFs or numerical results). Defaults to saving in the current directory.",
     )
     parser.add_argument(
-        "--style_name",
+        "--style_path",
         type=str,
-        default="",
-        help="The of the style file without its extension, if desired. This file must be in ./assets/styles/",
+        default=None,
+        help="The path to a style file to use for plotting.",
     )
     parser.add_argument(
         "--separate_plots",
         action="store_true",
         help="Whether to plot N and S separately.",
     )
-    # parser.add_argument(
-    #     "--xaxis_value",
-    #     type=str,
-    #     default="time",
-    #     help="Which variable to have plotted on the xaxis. By default, the y-axis for the two subplots will always be N or S.",
-    # )
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="Whether to overwrite existing saved figures or output.",
+        help="Whether to overwrite existing saved PDF figures or numerical outputs.",
     )
     # pass the output to main
     parsed_args = parser.parse_args()
     main(parsed_args)
+
+# TODO
+# change configuration pathing
+# make get sols and entries
+# edit plotting code to use get sols and entries
+# edit plotting code to save multiple figs to same pdf
+# edit plotting code to save single plot
+# remove max_k from plotting code
