@@ -1,0 +1,14 @@
+model = "DWM"
+t0 = 0
+t1 = 1000
+dt0 = 1
+init_S = 0.01
+init_N = 0.5
+init_k = 1
+max_k = 1.5
+alpha = 0.05
+c = 0.5
+r = 0.01
+g = 0.15
+d = 1
+beta = 0.1
