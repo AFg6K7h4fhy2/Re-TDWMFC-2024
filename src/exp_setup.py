@@ -18,12 +18,14 @@ To run w/ normal plots:
 python3 exp_setup.py --config "fig_01.toml"
 python3 exp_setup.py --config "fig_03.toml" --plot
 python3 exp_setup.py --config "fig_01.toml" --plot --style_path "../assets/styles/general_AF.mplstyle"
-python3 exp_setup.py --config "exp_fig_01.toml" --plot --style_path "../assets/styles/general_AF.mplstyle"
+python3 exp_setup.py --config "../config/fig_01.toml" --plot --style_path "../assets/styles/general_AF.mplstyle" --output_path "../assets/figures"
+python3 exp_setup.py --config "../config/fig_01.toml" --save --output_path "../assets/experiments"
 """
 
 import argparse
 import datetime as dt
 import itertools as it
+import json
 import pathlib
 import time
 
@@ -31,6 +33,7 @@ import diffrax
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+import numpy as np
 import toml
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -189,6 +192,25 @@ def get_args(
     return args
 
 
+def extract_config_name(config_path: str) -> str:
+    """
+    Extract the config name (without
+    extension) from a given path.
+
+    Parameters
+    ----------
+    config_path : str
+        The path to the configuration file.
+
+    Returns
+    -------
+    str
+        The name of the configuration file
+        without its extension.
+    """
+    return pathlib.Path(config_path).stem
+
+
 def run_clio_model(
     t0: int,
     t1: int,
@@ -238,6 +260,7 @@ def get_sols_and_entries(
     ]
     sols_and_entries = list(zip(sols, entries))
     return (
+        model_vars_and_params,
         len_model_vars_and_params,
         model_vars_and_params_w_indices,
         sols_and_entries,
@@ -245,10 +268,69 @@ def get_sols_and_entries(
 
 
 def save_experiments(
-    model_input: dict[str, list[float] | list[int]],
-    sols: list[jax.Array],
+    config_name: str,
+    sols_and_entries: list[jax.Array],
+    model_vars_and_params,
+    output_path: str,
+    overwrite: bool,
 ):
-    pass
+    """
+    Save JAX solution arrays to a folder
+    named after the config and date.
+
+    Parameters
+    ----------
+    config_name : str
+        The base name for the experiment
+        folder and files.
+    sols_and_entries : list[jax.Array]
+        List of JAX solution arrays to save.
+    output_path : str
+        Base directory where the experiment
+        folder will be created.
+    overwrite : bool
+        If False, skips saving files that
+        already exist. Default is False.
+    """
+    # prepare experiment folder path
+    current_date = dt.datetime.now().strftime("%Y-%m-%d_%H")
+    experiment_folder = (
+        pathlib.Path(output_path) / f"{config_name}_{current_date}"
+    )
+
+    # if overwrite is False and folder exists, skip saving entirely
+    if experiment_folder.exists() and not overwrite:
+        print(
+            f"Experiment folder {experiment_folder} already exists. Skipping save."
+        )
+        return
+
+    experiment_folder.mkdir(parents=True, exist_ok=True)
+
+    # JSON structure to store index-to-entry mappings
+    index_to_entry = {}
+
+    # save each solution array as a separate .npy file
+    for idx, s_e in enumerate(sols_and_entries):
+        file_name = f"{config_name}_sol_{idx}_{current_date}.npy"
+        file_path = experiment_folder / file_name
+
+        # check for existing file and skip if overwrite is False
+        if file_path.exists() and not overwrite:
+            print(f"File {file_path} already exists. Skipping.")
+            continue
+
+        # save the solution as a .npy file
+        np.save(file_path, np.asarray(s_e[0].ys))
+        print(f"Saved: {file_path}")
+
+        index_to_entry[idx] = dict(list(zip(model_vars_and_params, s_e[1])))
+
+    # save input entry file
+    json_file_path = experiment_folder / f"{config_name}_{current_date}.json"
+    with open(json_file_path, "w") as json_file:
+        json.dump(index_to_entry, json_file, indent=4)
+    print(f"Saved JSON mapping: {json_file_path}")
 
 
 def plot_experiments(
@@ -278,7 +360,7 @@ def plot_experiments(
     output_path.mkdir(parents=True, exist_ok=True)
 
     # prepare output file
-    current_date = dt.datetime.now().strftime("%Y%m%d_%H")
+    current_date = dt.datetime.now().strftime("%Y-%m-%d_%H")
     config_name = pathlib.Path(config_name).stem
     file_name = f"{config_name}_{current_date}.pdf"
     file_path = output_path / file_name
@@ -298,7 +380,33 @@ def plot_experiments(
             len_model_vars_and_params[k] == 1
             for k in model_vars_and_params_w_indices.keys()
         ):
-            print(sols_and_entries)
+
+            figure, axes = plt.subplots(nrows=1, ncols=2)
+            axes[0].set_title(f"{model_selected}: Population Change")
+            axes[0].set_ylabel(r"$N$", rotation=90)
+            axes[0].set_xlabel("t")
+            type_S = "Resources" if model_selected == "DFM" else "Wealth"
+            sol = sols_and_entries[0][0]
+            N, S = sol.ys.T
+            timepoints = sol.ts
+            axes[0].plot(
+                timepoints.tolist(),
+                N.tolist(),
+            )
+            axes[1].plot(
+                timepoints.tolist(),
+                S.tolist(),
+            )
+
+            axes[1].set_title(f"{model_selected}: State {type_S}")
+            axes[1].set_ylabel(r"$S$", rotation=90)
+            axes[1].set_xlabel("t")
+            axes[1].set_xlim(xmin=0)
+            axes[1].set_ylim(ymin=0)
+            axes[0].set_xlim(xmin=0)
+            axes[0].set_ylim(ymin=0)
+            pdf.savefig(figure)
+            plt.close(figure)
         # if at least one variable or parameter
         # has multiple values
         else:
@@ -380,8 +488,9 @@ def plot_experiments(
 
 def main(parsed_args: argparse.Namespace) -> None:
 
-    # get configuration file
-    config = load_and_validate_config(config_path=parsed_args.config)
+    # get configuration file and name
+    config = load_and_validate_config(config_path=parsed_args.config_path)
+    config_name = extract_config_name(config_path=parsed_args.config_path)
 
     # get model (DFM or DWM) specified
     model_selected = config["model"]
@@ -411,8 +520,8 @@ def main(parsed_args: argparse.Namespace) -> None:
         f"{round(elapsed, 5)} Seconds.\n"
     )
 
-    # TODO: comment
     (
+        model_vars_and_params,
         len_model_vars_and_params,
         model_vars_and_params_w_indices,
         sols_and_entries,
@@ -427,7 +536,7 @@ def main(parsed_args: argparse.Namespace) -> None:
     # (possibly) plot model results
     if parsed_args.plot:
         plot_experiments(
-            config_name=parsed_args.config,
+            config_name=config_name,
             len_model_vars_and_params=len_model_vars_and_params,
             model_vars_and_params_w_indices=model_vars_and_params_w_indices,
             sols_and_entries=sols_and_entries,
@@ -440,7 +549,13 @@ def main(parsed_args: argparse.Namespace) -> None:
         )
     # (possibly) save model results
     if parsed_args.save:
-        pass
+        save_experiments(
+            config_name=config_name,
+            sols_and_entries=sols_and_entries,
+            model_vars_and_params=model_vars_and_params,
+            output_path=parsed_args.output_path,
+            overwrite=parsed_args.overwrite,
+        )
 
 
 if __name__ == "__main__":
