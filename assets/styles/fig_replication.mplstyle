@@ -19,8 +19,7 @@
 ################################################################################
 
 
-
-figure.figsize: 8, 6 # figure size in inches
+figure.figsize: 6, 6 # figure size in inches
 figure.dpi: 150 # figure dots per inch
 
 # enable LaTeX rendering for text
@@ -39,13 +38,5 @@ xtick.labelsize: 12  # size of x-axis tick labels
 ytick.labelsize: 12  # size of y-axis tick labels
 legend.fontsize: 12  # size of legend text
 
-# grid settings
-grid.alpha: 0.5  # light grid
-grid.linestyle: "--"  # dotted grid lines
-
 # tight layout
 figure.autolayout: True
-
-# minor ticks settings (optional)
-axes.grid: True  # show grid
-axes.grid.which: major  # use only major grid lines

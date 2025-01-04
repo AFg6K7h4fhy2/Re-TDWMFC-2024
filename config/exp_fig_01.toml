@@ -1,13 +1,13 @@
 model = "DFM"
 t0 = 0
-t1 = 1000
+t1 = 500
 dt0 = 1
 init_S = 0.0
 init_N = 0.5
-init_rho = [1, 2, 4]
+init_rho = 1
 init_s = 10
 init_k = 1
 max_k = 4
 c = 3
-r = 0.02
-beta = 0.25
+r = [0.01, 0.02, 0.05]
+beta = [0.0, 0.1, 0.25, 0.4]
