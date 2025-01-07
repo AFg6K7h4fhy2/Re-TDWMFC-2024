@@ -4,9 +4,43 @@ __NOTE__: This repository is quite new and contains NO content of note!
 
 ## Table Of Contents
 
+*
 
+## [Installation](#installation)
 
-## Original Paper
+_How can one use this code?_
+
+## [Scope Of This Repository](#scope-of-this-repository)
+
+_What does this repository consist of?_
+
+(tentatively)
+
+* All mathematical formulas have been converted to Python 3 code.
+* Theorems 4.1 and 4.2 have been validated in Lean.
+* US data has been fitted to [insert formula].
+
+### [Motivation](#motivation)
+
+_Why did the author do this?_
+
+### [Contribution](#contribution)
+
+_What did the author actually add?_
+
+### [Procedure](#procedure)
+
+_How did the author do this?_
+
+## [Model Description](#model-description)
+
+_How do the aforementioned cliodynamics models work?_
+
+## [Results](#results)
+
+_What does some of the output look like?_
+
+## [Original Paper](#original-paper)
 
 __Links__
 
@@ -36,11 +70,3 @@ __Bibtex__:
 __Abstract__:
 
 > Cliodynamics is a still a relatively new research area with the purpose of investigating and modelling historical processes. One of its first important mathematical models was proposed by Turchin and called “Demographic-Fiscal Model” (DFM). This DFM was one of the first and is one of a few models that link population with state dynamics. In this work, we propose a possible alternative to the classical Turchin DFM, which contributes to further model development and comparison essential for the field of cliodynamics. Our “Demographic-Wealth Model” (DWM) aims to also model link between population and state dynamics but makes different modelling assumptions, particularly about the type of possible taxation. As an important contribution, we employ tools from nonlinear dynamics, e.g., existence theory for periodic orbits as well as analytical and numerical bifurcation analysis, to analyze the DWM. We believe that these tools can also be helpful for many other current and future models in cliodynamics. One particular focus of our analysis is the occurrence of Hopf bifurcations. Therefore, a detailed analysis is developed regarding equilibria and their possible bifurcations. Especially noticeable is the behavior of the so-called coexistence point. While changing different parameters, a variety of Hopf bifurcations occur. In addition, it is indicated, what role Hopf bifurcations may play in the interplay between population and state dynamics. There are critical values of different parameters that yield periodic behavior and limit cycles when exceeded, similar to the “paradox of enrichment” known in ecology. This means that the DWM provides one possible avenue setup to explain in a simple format the existence of secular cycles, which have been observed in historical data. In summary, our model aims to balance simplicity, linking to the underlying processes and the goal to represent secular cycles.
-
-## Scope Of This Repository
-
-(tentatively)
-
-* All mathematical formulas have been converted to Python 3 code.
-* Theorems 4.1 and 4.2 have been validated in Lean.
-* US data has been fitted to [insert formula].
