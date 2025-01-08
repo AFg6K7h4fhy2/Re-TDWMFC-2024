@@ -2,9 +2,19 @@
 
 __NOTE__: This repository is quite new and contains NO content of note!
 
-## Table Of Contents
+## [Table Of Contents](#table-of-contents)
 
-*
+- [Re-_The Demographic-Wealth Model For Cliodynamics_](#re-the-demographic-wealth-model-for-cliodynamics)
+  - [Table Of Contents](#table-of-contents)
+  - [Installation](#installation)
+  - [Repository Scope](#repository-scope)
+    - [Motivation](#motivation)
+    - [Contribution](#contribution)
+    - [Procedure](#procedure)
+    - [Project Structure](#project-structure)
+  - [Model Description](#model-description)
+  - [Results](#results)
+  - [Original Paper](#original-paper)
 
 ## [Installation](#installation)
 
@@ -31,6 +41,8 @@ _What did the author actually add?_
 ### [Procedure](#procedure)
 
 _How did the author do this?_
+
+### [Project Structure](#project-structure)
 
 ## [Model Description](#model-description)
 
