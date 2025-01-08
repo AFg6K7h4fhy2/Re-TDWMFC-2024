@@ -5,6 +5,10 @@ This document contains descriptions[^ai_translate] of the two models referenced 
 * The Demographic Fiscal Model[^dfm]
 * The Demographic Wealth Model[^dwm]
 
+[^dwm]: Wittmann, Lukas, and Christian Kuehn. "The Demographic-Wealth model for cliodynamics." Plos one 19, no. 4 (2024): e0298318.
+
+[^dfm]: Turchin, Peter. "Historical dynamics: Why states rise and fall." (2018): 121-131.
+
 Analyses of model dynamics provided by the authors of the models are not included.
 
 [^ai_translate]: In order to reduce manual labor, the author had AI systems convert screenshots of PDF text descriptions to markdown; while the author has yet to find errors in the translation, there may be some. It is also work noting that _The Demographic Wealth Model_ paper had a moderate number of grammatical errors in its published form, so those may have been retained by the AI translator. The `typos` pre-commit hook did not capture any spelling errors within this file.
@@ -120,7 +124,3 @@ Analyses of model dynamics provided by the authors of the models are not include
 > \]
 >
 > Note that different choices for the interaction functions between population and state are definitely possible, e.g., the nonlinearities may also carry different powers for \(S\) and \(N\). Here we have effectively applied the principle to start with the simplest non-trivial case of a direct production interaction leading to the terms \(SN\).
-
-[^dwm]: Wittmann, Lukas, and Christian Kuehn. "The Demographic-Wealth model for cliodynamics." Plos one 19, no. 4 (2024): e0298318.
-
-[^dfm]: Turchin, Peter. "Historical dynamics: Why states rise and fall." (2018): 121-131.
