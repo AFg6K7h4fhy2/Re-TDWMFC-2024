@@ -7,7 +7,7 @@ This document contains descriptions[^ai_translate] of the two models referenced 
 
 Analyses of model dynamics provided by the authors of the models are not included.
 
-[^ai_translate]: In order to reduce manual labor, the author had AI systems convert screenshots of PDF text descriptions to markdown; while the author has yet to find errors in the translation, there may be some. It is also work noting that _The Demographic Wealth Model_ paper had a moderate number of grammatical errors in its published form, so those may have been retained by the AI translator.
+[^ai_translate]: In order to reduce manual labor, the author had AI systems convert screenshots of PDF text descriptions to markdown; while the author has yet to find errors in the translation, there may be some. It is also work noting that _The Demographic Wealth Model_ paper had a moderate number of grammatical errors in its published form, so those may have been retained by the AI translator. The `typos` pre-commit hook did not capture any spelling errors within this file.
 
 ## The Demographic Fiscal Model
 
