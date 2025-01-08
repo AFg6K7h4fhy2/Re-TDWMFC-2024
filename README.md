@@ -10,7 +10,7 @@ __NOTE__: This repository is quite new and contains NO content of note!
 
 _How can one use this code?_
 
-## [Scope Of This Repository](#scope-of-this-repository)
+## [Repository Scope](#scope-of-this-repository)
 
 _What does this repository consist of?_
 
