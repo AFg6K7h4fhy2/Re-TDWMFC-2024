@@ -1,4 +1,4 @@
-# Re- _The Demographic-Wealth Model For Cliodynamics_
+# Re-_The Demographic-Wealth Model For Cliodynamics_
 
 __NOTE__: This repository is quite new and contains NO content of note!
 
