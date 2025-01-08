@@ -57,3 +57,17 @@ nx.draw(
 )
 plt.title("Directed Graph of Variables and Relationships", fontsize=14)
 plt.show()
+
+
+additional_variables = [
+    "Infrastructure Quality",
+    "Technology Level",
+    "Healthcare",
+    "Trade Wealth",
+    "Environmental Resources",
+    "Public Discontent",
+    "Education Level",
+    "Corruption Level",
+    "Elite Fragmentation",
+    "Cultural Unity",
+]
