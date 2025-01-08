@@ -8,3 +8,4 @@ __Acknowledgements__: Thank you Peter Turchin.
 
 * [Post Where I Outline Collapse-Study Resources]()
 * [Historical Dynamics (Turchin, 2003)]()
+*
