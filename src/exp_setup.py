@@ -17,9 +17,12 @@ cliodynamics, 2024).
 To run w/ normal plots:
 python3 exp_setup.py --config "fig_01.toml"
 python3 exp_setup.py --config "fig_03.toml" --plot
-python3 exp_setup.py --config "fig_01.toml" --plot --style_path "../assets/styles/general_AF.mplstyle"
-python3 exp_setup.py --config "../config/fig_01.toml" --plot --style_path "../assets/styles/general_AF.mplstyle" --output_path "../assets/figures"
-python3 exp_setup.py --config "../config/fig_01.toml" --save --output_path "../assets/experiments"
+python3 exp_setup.py --config "fig_01.toml" --plot --style_path
+"../assets/styles/general_AF.mplstyle"
+python3 exp_setup.py --config "../config/fig_01.toml" --plot --style_path
+"../assets/styles/general_AF.mplstyle" --output_path "../assets/figures"
+python3 exp_setup.py --config "../config/fig_01.toml" --save --output_path
+"../assets/experiments"
 """
 
 import argparse
@@ -78,7 +81,7 @@ CONFIG_PARAMS = {
         "beta",  # expenditure rate
         "alpha",  # ?
         "d",  # strength of negative feedback from S to N
-        "g",  # tax rate times the fraction of surplus gained through investing/expanding
+        "g",  # tax rate x fraction of surplus added via investing/expanding
         "c",  # max_k - init_k
         "init_k",  # initial carrying capacity
     ],
@@ -136,19 +139,21 @@ def load_and_validate_config(
     try:
         config = toml.load(config_path)
     except Exception as e:
-        raise Exception(f"Error while loading TOML: {e}")
+        raise Exception(f"Error while loading TOML: {e}") from e
 
     # ensure that all loaded configuration entries are proper
     loaded_entries = list(config.keys())
     if "model" not in loaded_entries:
         raise ValueError(
-            'There is currently no "model" key in the loaded configuration elements.'
+            "There is currently no 'model' key in the loaded"
+            " configuration elements."
         )
 
     model_specified = config["model"]
     if model_specified not in SUPPORTED_MODELS:
         raise ValueError(
-            f"The specified model ({model_specified}) is not in the supported models: {SUPPORTED_MODELS}."
+            f"The specified model ({model_specified}) is not in the"
+            f" supported models: {SUPPORTED_MODELS}."
         )
 
     missing_model_vals = [
@@ -158,7 +163,8 @@ def load_and_validate_config(
     ]
     if missing_model_vals:
         raise ValueError(
-            f"The following values ({missing_model_vals}) are missing for the {model_specified} model."
+            f"The following values ({missing_model_vals}) are missing for"
+            f" the {model_specified} model."
         )
 
     # ensure all config entries are list-like
@@ -179,7 +185,7 @@ def get_y0s(
 
 
 def get_args(
-    model_input: dict[str, list[int] | list[float]]
+    model_input: dict[str, list[int] | list[float]],
 ) -> list[jax.Array]:
     args = [
         jnp.array(group)
@@ -301,7 +307,8 @@ def save_experiments(
     # if overwrite is False and folder exists, skip saving entirely
     if experiment_folder.exists() and not overwrite:
         print(
-            f"Experiment folder {experiment_folder} already exists. Skipping save."
+            f"Experiment folder {experiment_folder}"
+            " already exists. Skipping save."
         )
         return
 
@@ -345,7 +352,6 @@ def plot_experiments(
     separate_plots: bool,
     overwrite: bool,
 ) -> None:
-
     # get style to use; again, assuming the
     # code is being run from within ./src
     if style_path:
@@ -378,9 +384,8 @@ def plot_experiments(
         # parameters)
         if all(
             len_model_vars_and_params[k] == 1
-            for k in model_vars_and_params_w_indices.keys()
+            for k in model_vars_and_params_w_indices
         ):
-
             figure, axes = plt.subplots(nrows=1, ncols=2)
             axes[0].set_title(f"{model_selected}: Population Change")
             axes[0].set_ylabel(r"$N$", rotation=90)
@@ -410,7 +415,7 @@ def plot_experiments(
         # if at least one variable or parameter
         # has multiple values
         else:
-            for k, v in model_vars_and_params_w_indices.items():
+            for k, _v in model_vars_and_params_w_indices.items():
                 # variables or parameters of length
                 # one are taken into account below
                 if len_model_vars_and_params[k] > 1:
@@ -440,7 +445,7 @@ def plot_experiments(
                     ]
                     # plot the group on an individual figure
                     # this will only ever plot N or S
-                    for i, group in enumerate(groups_for_k):
+                    for _i, group in enumerate(groups_for_k):
                         figure, axes = plt.subplots(nrows=1, ncols=2)
                         axes[0].set_title(
                             f"{model_selected}: Population Change"
@@ -481,13 +486,13 @@ def plot_experiments(
                         axes[0].set_xlim(xmin=0)
                         axes[0].set_ylim(ymin=0)
                         # plt.show()
-                        # fig = create_plot(model_name, y0s, args, [sols[idx]], style)
+                        # fig = create_plot(
+                        # model_name, y0s, args, [sols[idx]], style)
                         pdf.savefig(figure)  # save fig
                         plt.close(figure)  # close fig after saving
 
 
 def main(parsed_args: argparse.Namespace) -> None:
-
     # get configuration file and name
     config = load_and_validate_config(config_path=parsed_args.config_path)
     config_name = extract_config_name(config_path=parsed_args.config_path)
@@ -516,8 +521,8 @@ def main(parsed_args: argparse.Namespace) -> None:
     )
     elapsed = time.time() - start
     print(
-        f"Experiments Using {model_selected} Ran In:\n"
-        f"{round(elapsed, 5)} Seconds.\n"
+        f"Experiments Using {model_selected} Ran In:"
+        f"\n{round(elapsed, 5)} Seconds.\n"
     )
 
     (
@@ -578,13 +583,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save",
         action="store_true",
-        help="Whether to save the results the numerical results of the experiment.",
+        help=(
+            "Whether to save the results the numerical"
+            " results of the experiment."
+        ),
     )
     parser.add_argument(
         "--output_path",
         type=str,
         default=".",
-        help="The folder for saved output files (plot PDFs or numerical results). Defaults to saving in the current directory.",
+        help=(
+            "The folder for saved output files (plot PDFs or numerical"
+            " results). Defaults to saving in the current directory."
+        ),
     )
     parser.add_argument(
         "--style_path",
@@ -600,7 +611,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="Whether to overwrite existing saved PDF figures or numerical outputs.",
+        help=(
+            "Whether to overwrite existing saved PDF figures"
+            " or numerical outputs."
+        ),
     )
     # pass the output to main
     parsed_args = parser.parse_args()

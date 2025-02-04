@@ -9,7 +9,6 @@ cliodynamics) by Wittmann and Kuehn.
 
 # %% IMPORTS
 
-
 import pathlib
 
 import matplotlib.pyplot as plt

@@ -4,7 +4,7 @@ __NOTE__: This repository is quite new and contains NO content of note!
 
 ## Table Of Contents
 
-*
+* [Installation](#installation)
 
 ## [Installation](#installation)
 

@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "re-tdwmfc-wittmann"
 version = "0.0.1"
-description = "A partial replication in Python of the 2024 paper (The Demographic-Wealth model for cliodynamics) by Wittmann and Kuehn. "
+description = "A partial replication in Python of the 2024 paper (The Demographic-Wealth model for cliodynamics) by Wittmann and Kuehn."
 authors = ["AFg6K7h4fhy2 <127630341+AFg6K7h4fhy2@users.noreply.github.com>"]
 license = "Apache-2.0"
 package-mode = false
@@ -30,6 +30,9 @@ mypy = "^1.13.0"
 [tool.poetry.urls]
 "Repository Issues" = "https://github.com/AFg6K7h4fhy2/Re-TDWMFC-2024/issues"
 "Author Homepage" = "https://github.com/AFg6K7h4fhy2"
+
+[tool.ruff.format]
+quote-style = "double"   # use single quotes
 
 [build-system]
 requires = ["poetry-core"]
